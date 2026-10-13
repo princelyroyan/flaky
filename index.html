@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>FLAKY: Escape the Pipeline</title>
+
+<!-- iOS & Web App Capability Tags -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FLAKY">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0e15">
+
+<!-- Embedded Pixel Art App Icon (SVG Data URI) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='192' height='192'%3E%3Crect width='64' height='64' fill='%230d0e15'/%3E%3Crect x='6' y='6' width='52' height='52' fill='%23181425' stroke='%232ce8f5' stroke-width='2'/%3E%3Crect x='16' y='14' width='32' height='16' fill='%230099db'/%3E%3Crect x='22' y='18' width='8' height='6' fill='%23fcfcfc'/%3E%3Crect x='34' y='18' width='8' height='6' fill='%23fcfcfc'/%3E%3Crect x='24' y='20' width='4' height='4' fill='%230099db'/%3E%3Crect x='36' y='20' width='4' height='4' fill='%230099db'/%3E%3Crect x='18' y='32' width='28' height='16' fill='%233a4466'/%3E%3Ctext x='32' y='44' font-family='monospace' font-size='10' font-weight='bold' fill='%2363c74d' text-anchor='middle'%3Eassert%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230d0e15'/%3E%3Crect x='16' y='16' width='32' height='32' fill='%2363c74d'/%3E%3Ctext x='32' y='38' font-family='monospace' font-size='24' font-weight='bold' fill='%230d0e15' text-anchor='middle'%3E%E2%9C%93%3C/text%3E%3C/svg%3E">
+
+<!-- Embedded PWA Web App Manifest (Data URI) -->
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22FLAKY%3A%20Escape%20the%20Pipeline%22%2C%22short_name%22%3A%22FLAKY%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22orientation%22%3A%22portrait%22%2C%22background_color%22%3A%22%230d0e15%22%2C%22theme_color%22%3A%22%230d0e15%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2064%2064'%20width%3D'192'%20height%3D'192'%253E%253Crect%20width%3D'64'%20height%3D'64'%20fill%3D'%25230d0e15'%2F%253E%253Crect%20x%3D'6'%20y%3D'6'%20width%3D'52'%20height%3D'52'%20fill%3D'%2523181425'%20stroke%3D'%25232ce8f5'%20stroke-width%3D'2'%2F%253E%253Crect%20x%3D'16'%20y%3D'14'%20width%3D'32'%20height%3D'16'%20fill%3D'%25230099db'%2F%253E%253Crect%20x%3D'22'%20y%3D'18'%20width%3D'8'%20height%3D'6'%20fill%3D'%2523fcfcfc'%2F%253E%253Crect%20x%3D'34'%20y%3D'18'%20width%3D'8'%20height%3D'6'%20fill%3D'%2523fcfcfc'%2F%253E%253Crect%20x%3D'24'%20y%3D'20'%20width%3D'4'%20height%3D'4'%20fill%3D'%25230099db'%2F%253E%253Crect%20x%3D'36'%20y%3D'20'%20width%3D'4'%20height%3D'4'%20fill%3D'%25230099db'%2F%253E%253Crect%20x%3D'18'%20y%3D'32'%20width%3D'28'%20height%3D'16'%20fill%3D'%25233a4466'%2F%253E%253Ctext%20x%3D'32'%20y%3D'44'%20font-family%3D'monospace'%20font-size%3D'10'%20font-weight%3D'bold'%20fill%3D'%252363c74d'%20text-anchor%3D'middle'%253Eassert%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    background-color: #05050a;
+    overflow: hidden;
+    touch-action: none;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #game-wrapper {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    max-width: 56.25vh; /* 9:16 aspect ratio lock */
+    max-height: 177.78vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #0d0e15;
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.15);
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+</style>
+</head>
+<body>
+<div id="game-wrapper">
+  <canvas id="gameCanvas" width="360" height="640"></canvas>
+</div>
+
+<script>
+/**
+ * FLAKY: Escape the Pipeline
+ * Self-contained 8-bit HTML5 Canvas Game
+ */
+(() => {
+  'use strict';
+
+  // --- EMBEDDED SERVICE WORKER REGISTRATION (Offline Capability) ---
+  if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+      const swCode = `
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => self.clients.claim());
+        self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    });
+  }
+
+  // --- 16-COLOR NES PALETTE ---
+  const PAL = {
+    0: null,        // Transparent
+    1: '#0d0e15',   // Void Black
+    2: '#fcfcfc',   // Crisp White
+    3: '#8b9bb4',   // Steel Gray
+    4: '#3a4466',   // Dark Slate
+    5: '#e43b44',   // Red (Fail / Boss)
+    6: '#feae34',   // Orange (Warning / Fire)
+    7: '#fee761',   // Yellow (Running / Flaky)
+    8: '#63c74d',   // Green (Passed / Check)
+    9: '#2ce8f5',   // Cyan (Assert / Shield)
+    10: '#0099db',  // Blue (Tess Hoodie)
+    11: '#b55088',  // Purple (Heisenbug / Magic)
+    12: '#f6757a',  // Pink (Slime / Glitch)
+    13: '#ead4aa',  // Skin Peach
+    14: '#733e39',  // Coffee Brown
+    15: '#181425'   // Deep Background
+  };
+
+  const SDET_TIPS = [
+    "TIP: Never trust a test that passes on the first try.",
+    "TIP: 'It works on my machine' — Then we ship your machine.",
+    "TIP: Putting Thread.sleep(5000) is not a fix, it's a confession.",
+    "TIP: A QA engineer walks into a bar. Orders -1 beers. Bar bursts into flames.",
+    "TIP: Mocking everything tests nothing except your imagination.",
+    "TIP: 4:55 PM on Friday is when The Heisenbug feeds.",
+    "TIP: Flaky Ghosts only take damage when their opacity is 100%.",
+    "TIP: Race Conditions must both be squashed within 1.0 second!"
+  ];
+
+  const STACK_TRACES = [
+    "NullPointerException: MoralSupport is undefined\n  at Startup.deploy(Friday.js:455)\n  at Pipeline.panic(CI.js:13)",
+    "AssertionError: Expected 'Weekend' but got 'PagerDutyIncident'\n  at Tess.survive(SDET.js:404)",
+    "TimeoutError: Waiting 30000ms for selector '#will-to-live'\n  at E2ERunner.flake(CypressHill.js:99)",
+    "OutOfMemoryError: node_modules exceeded mass of observable universe\n  at npm.install(BlackHole.js:1)",
+    "RaceConditionException: Thread B finished before Thread A started\n  at Async.await(Quantum.js:0)"
+  ];
+
+  // --- PIXEL SPRITE BITMAPS (Hex indices 0-F map to PAL 0-15) ---
+  const RAW_SPRITES = {
+    tessRun1: [
+      "0000AAAA0000",
+      "000AAAAAA000",
+      "00AA22DD2200",
+      "00EE29DD9200",
+      "00EEEDDDDE00",
+      "0033AAAAAA00",
+      "0033AAAAAA90",
+      "0033AAAA3300",
+      "0000AAAA0000",
+      "000044044000",
+      "000440004400",
+      "000550000550"
+    ],
+    tessRun2: [
+      "0000AAAA0000",
+      "000AAAAAA000",
+      "00AA22DD2200",
+      "00EE29DD9200",
+      "00EEEDDDDE00",
+      "0033AAAAAA00",
+      "0033AAAA9900",
+      "0033AAAAAA00",
+      "0000AAAA0000",
+      "000004440000",
+      "000044044000",
+      "000055005500"
+    ],
+    tessSlide: [
+      "000000000000",
+      "000000000000",
+      "000000000000",
+      "000000000000",
+      "00333AAAA000",
+      "0033AA22DD22",
+      "0000AAAAAAA0",
+      "000444444550"
+    ],
+    bug: [
+      "0050000500",
+      "0005005000",
+      "0055555500",
+      "0552552550",
+      "5555555555",
+      "5551551555",
+      "0555555550",
+      "0500550050"
+    ],
+    nullPtr: [
+      "0006666000",
+      "0066776600",
+      "0677117760",
+      "6771111776",
+      "6771111776",
+      "0677117760",
+      "0066776600",
+      "0006666000"
+    ],
+    slime: [
+      "0000CCCC0000",
+      "000CCCCCC000",
+      "00CCCCCCCC00",
+      "0CC21CC21CC0",
+      "CCCCCCCCCCCC",
+      "CCC111111CCC",
+      "CCCCCCCCCCCC"
+    ],
+    ghost: [
+      "000777777000",
+      "007777777700",
+      "077227722770",
+      "077127712770",
+      "077777777770",
+      "077171717770",
+      "077777777770",
+      "070770077070"
+    ],
+    race: [
+      "0009999900",
+      "0099777990",
+      "0997797799",
+      "0977999779",
+      "0099777990",
+      "0009999900"
+    ],
+    spider: [
+      "3000330003",
+      "0303333030",
+      "0035335300",
+      "3333333333",
+      "0033773300",
+      "0303003030",
+      "3030000303"
+    ],
+    coffee: [
+      "00202000",
+      "00020200",
+      "0EEEEEE0",
+      "0E2222EE",
+      "0EEEEEEE",
+      "0EEEEEE0",
+      "00EEEE00"
+    ],
+    shield: [
+      "09999990",
+      "99222299",
+      "92999929",
+      "92999929",
+      "09299290",
+      "00922900",
+      "00099000"
+    ],
+    retry: [
+      "00888800",
+      "08800880",
+      "88000888",
+      "88000000",
+      "88800880",
+      "08888800",
+      "00080000"
+    ],
+    triple: [
+      "00666600",
+      "06777760",
+      "67277276",
+      "67777776",
+      "06722760",
+      "00666600"
+    ],
+    orb: [
+      "00888800",
+      "08228880",
+      "82288888",
+      "88888888",
+      "08888880",
+      "00888800"
+    ],
+    machine: [
+      "07777770",
+      "79999997",
+      "79299297",
+      "79999997",
+      "07777770",
+      "03333330",
+      "33333333"
+    ]
+  };
+
+  const SPRITE_CACHE = {};
+  function initSprites() {
+    for (const [key, rows] of Object.entries(RAW_SPRITES)) {
+      const h = rows.length;
+      const w = rows[0].length;
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const cx = c.getContext('2d');
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = parseInt(rows[y][x], 16);
+          if (idx > 0 && PAL[idx]) {
+            cx.fillStyle = PAL[idx];
+            cx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+      SPRITE_CACHE[key] = c;
+    }
+  }
+
+  function drawSprite(ctx, key, x, y, scale = 2, alpha = 1) {
+    const img = SPRITE_CACHE[key];
+    if (!img) return;
+    if (alpha !== 1) ctx.globalAlpha = alpha;
+    ctx.drawImage(img, Math.floor(x), Math.floor(y), img.width * scale, img.height * scale);
+    if (alpha !== 1) ctx.globalAlpha = 1;
+  }
+
+  // --- AUDIO ENGINE ---
+  class AudioEngine {
+    constructor() {
+      this.ctx = null;
+      this.muted = false;
+      this.bgmTimer = 0;
+      this.noteIdx = 0;
+      this.melody = [
+        261.63, 329.63, 392.00, 523.25, 392.00, 329.63,
+        293.66, 349.23, 440.00, 587.33, 440.00, 349.23,
+        246.94, 329.63, 392.00, 493.88, 392.00, 329.63,
+        261.63, 392.00, 523.25, 392.00, 329.63, 261.63
+      ];
+      this.bossMelody = [
+        146.83, 155.56, 146.83, 130.81, 146.83, 174.61, 164.81, 130.81
+      ];
+    }
+
+    unlock() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) this.ctx = new AudioCtx();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+
+    tone(freq, dur, type = 'square', vol = 0.08, slideTo = null) {
+      if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+      try {
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        if (slideTo) {
+          osc.frequency.exponentialRampToValueAtTime(slideTo, now + dur);
+        }
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.linearRampToValueAtTime(0.001, now + dur);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + dur);
+      } catch (e) {}
+    }
+
+    jump() { this.tone(240, 0.14, 'square', 0.08, 560); }
+    shoot() { this.tone(720, 0.08, 'square', 0.06, 300); }
+    slide() { this.tone(180, 0.1, 'triangle', 0.08, 90); }
+    hitEnemy() { this.tone(160, 0.12, 'sawtooth', 0.09, 60); }
+    bossHit() { this.tone(110, 0.2, 'sawtooth', 0.12, 45); }
+    powerup() {
+      this.tone(440, 0.08, 'square', 0.08, 660);
+      setTimeout(() => this.tone(660, 0.14, 'square', 0.08, 880), 70);
+    }
+    hurt() { this.tone(190, 0.3, 'sawtooth', 0.12, 55); }
+    stageClear() {
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((n, i) => setTimeout(() => this.tone(n, 0.14, 'square', 0.09), i * 110));
+    }
+
+    updateBGM(dt, isBoss) {
+      if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+      this.bgmTimer -= dt;
+      if (this.bgmTimer <= 0) {
+        const seq = isBoss ? this.bossMelody : this.melody;
+        const speed = isBoss ? 0.14 : 0.18;
+        this.bgmTimer = speed;
+        const freq = seq[this.noteIdx % seq.length];
+        this.tone(freq, speed * 0.85, 'triangle', 0.04);
+        if (this.noteIdx % 2 === 0) {
+          this.tone(freq * 0.5, speed * 0.7, 'square', 0.025);
+        }
+        this.noteIdx++;
+      }
+    }
+  }
+
+  // --- PLAYER CLASS ---
+  class Player {
+    constructor() {
+      this.reset();
+    }
+
+    reset() {
+      this.x = 46;
+      this.y = 440;
+      this.vy = 0;
+      this.w = 24;
+      this.h = 24;
+      this.grounded = false;
+      this.jumpHoldTimer = 0;
+      this.isHoldingJump = false;
+      this.slideTimer = 0;
+      this.invulnTimer = 0;
+      this.animTimer = 0;
+      this.frame = 0;
+
+      this.shield = false;
+      this.coffeeTimer = 0;
+      this.tripleTimer = 0;
+      this.machineTimer = 0;
+      this.shootCooldown = 0;
+    }
+
+    get isSliding() {
+      return this.slideTimer > 0;
+    }
+
+    startJump(audio) {
+      if (this.grounded) {
+        this.vy = -315;
+        this.grounded = false;
+        this.isHoldingJump = true;
+        this.jumpHoldTimer = 0.22;
+        this.slideTimer = 0;
+        this.h = 24;
+        audio.jump();
+      }
+    }
+
+    releaseJump() {
+      this.isHoldingJump = false;
+    }
+
+    startSlide(audio) {
+      if (!this.isSliding) {
+        this.slideTimer = 0.65;
+        if (this.grounded) {
+          this.y += 8;
+        } else {
+          this.vy = Math.max(this.vy, 280);
+        }
+        this.h = 16;
+        audio.slide();
+      }
+    }
+
+    update(dt, groundY, platforms) {
+      const prevBottom = this.y + this.h;
+
+      if (this.isHoldingJump && this.jumpHoldTimer > 0) {
+        this.vy -= 680 * dt;
+        this.jumpHoldTimer -= dt;
+      }
+
+      this.vy += 980 * dt;
+      this.y += this.vy * dt;
+
+      if (this.slideTimer > 0) {
+        this.slideTimer -= dt;
+        if (this.slideTimer <= 0) {
+          this.y -= 8;
+          this.h = 24;
+        }
+      }
+
+      if (this.invulnTimer > 0) this.invulnTimer -= dt;
+      if (this.coffeeTimer > 0) this.coffeeTimer -= dt;
+      if (this.tripleTimer > 0) this.tripleTimer -= dt;
+      if (this.machineTimer > 0) this.machineTimer -= dt;
+      if (this.shootCooldown > 0) this.shootCooldown -= dt;
+
+      this.grounded = false;
+
+      for (let i = 0; i < platforms.length; i++) {
+        const p = platforms[i];
+        if (this.x + this.w > p.x + 4 && this.x < p.x + p.w - 4) {
+          if (this.vy >= 0 && prevBottom <= p.y + 10 && this.y + this.h >= p.y) {
+            this.y = p.y - this.h;
+            this.vy = 0;
+            this.grounded = true;
+          }
+        }
+      }
+
+      if (groundY !== null && this.y + this.h >= groundY) {
+        this.y = groundY - this.h;
+        this.vy = 0;
+        this.grounded = true;
+      }
+
+      this.animTimer += dt * (this.coffeeTimer > 0 ? 14 : 9);
+      if (this.animTimer >= 1) {
+        this.animTimer = 0;
+        this.frame = 1 - this.frame;
+      }
+    }
+
+    draw(ctx) {
+      if (this.invulnTimer > 0 && Math.floor(this.invulnTimer * 16) % 2 === 0) return;
+
+      if (this.machineTimer > 0) {
+        ctx.strokeStyle = PAL[7];
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.x - 4, this.y - 4, this.w + 8, this.h + 8);
+      }
+
+      if (this.coffeeTimer > 0) {
+        drawSprite(ctx, this.isSliding ? 'tessSlide' : 'tessRun1', this.x - 10, this.y, 2, 0.35);
+      }
+
+      if (this.isSliding) {
+        drawSprite(ctx, 'tessSlide', this.x, this.y, 2);
+      } else {
+        drawSprite(ctx, this.frame === 0 ? 'tessRun1' : 'tessRun2', this.x, this.y, 2);
+      }
+
+      if (this.shield) {
+        ctx.strokeStyle = PAL[9];
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.x + this.w / 2, this.y + this.h / 2, 17, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // --- ENEMY CLASS ---
+  class Enemy {
+    constructor(type, x, y, extra = {}) {
+      this.type = type;
+      this.x = x;
+      this.y = y;
+      this.baseY = y;
+      this.w = 20;
+      this.h = 18;
+      this.hp = 1;
+      this.dead = false;
+      this.timer = Math.random() * 2;
+      this.scale = 2;
+      this.partner = null;
+      this.linkedWaiting = false;
+      this.respawnClock = 0;
+      this.label = '';
+
+      switch (type) {
+        case 'bug':
+          this.label = 'Typo Bug';
+          break;
+        case 'nullPtr':
+          this.label = 'NullPointer!';
+          this.w = 20; this.h = 16;
+          break;
+        case 'conflict':
+          this.label = '<<<<<<< HEAD';
+          this.w = 22; this.h = 20;
+          this.hp = 2;
+          break;
+        case 'slime':
+          this.label = 'Memory Leak';
+          this.w = 24; this.h = 14;
+          this.hp = 2;
+          break;
+        case 'ghost':
+          this.label = 'Flaky Ghost';
+          this.w = 24; this.h = 16;
+          break;
+        case 'race':
+          this.label = 'Race Condition: hit both!';
+          this.w = 20; this.h = 14;
+          break;
+        case 'spider':
+          this.label = '504 Timeout';
+          this.w = 20; this.h = 14;
+          break;
+        case 'hazard':
+          this.label = 'StaleElement!';
+          this.w = 22; this.h = 28;
+          this.hp = 999;
+          break;
+      }
+      Object.assign(this, extra);
+    }
+
+    get isSolid() {
+      if (this.type === 'ghost') {
+        return Math.sin(this.timer * 4.2) > -0.15;
+      }
+      return !this.linkedWaiting;
+    }
+
+    update(dt, scrollSpeed) {
+      this.x -= scrollSpeed * dt;
+      this.timer += dt;
+
+      if (this.type === 'nullPtr') {
+        this.y = this.baseY + Math.sin(this.timer * 5) * 14;
+      } else if (this.type === 'conflict') {
+        this.y = this.baseY - Math.abs(Math.sin(this.timer * 4.5)) * 38;
+      } else if (this.type === 'slime') {
+        this.scale = Math.min(3.5, this.scale + dt * 0.35);
+        this.w = Math.floor(12 * this.scale);
+        this.h = Math.floor(7 * this.scale);
+        this.y = this.baseY - this.h;
+      } else if (this.type === 'spider') {
+        const drop = Math.sin(this.timer * 3.2) > 0 ? 46 : 0;
+        this.y += (this.baseY + drop - this.y) * Math.min(1, dt * 8);
+      } else if (this.type === 'race' && this.linkedWaiting) {
+        this.respawnClock -= dt;
+        if (this.respawnClock <= 0) {
+          if (this.partner && !this.partner.dead) {
+            this.linkedWaiting = false;
+            this.hp = 1;
+          } else {
+            this.dead = true;
+          }
+        }
+      }
+    }
+
+    draw(ctx) {
+      if (this.linkedWaiting) {
+        ctx.strokeStyle = PAL[7];
+        ctx.strokeRect(this.x, this.y, this.w, this.h);
+        ctx.fillStyle = PAL[7];
+        ctx.font = '8px monospace';
+        ctx.fillText('WAIT..', this.x - 2, this.y - 4);
+        return;
+      }
+
+      if (this.type === 'bug') {
+        drawSprite(ctx, 'bug', this.x, this.y, 2);
+      } else if (this.type === 'nullPtr') {
+        drawSprite(ctx, 'nullPtr', this.x, this.y, 2);
+      } else if (this.type === 'conflict') {
+        ctx.fillStyle = PAL[6];
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.fillStyle = PAL[1];
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText('<<', this.x + 4, this.y + 14);
+      } else if (this.type === 'slime') {
+        drawSprite(ctx, 'slime', this.x, this.y, this.scale);
+      } else if (this.type === 'ghost') {
+        drawSprite(ctx, 'ghost', this.x, this.y, 2, this.isSolid ? 1.0 : 0.25);
+      } else if (this.type === 'race') {
+        drawSprite(ctx, 'race', this.x, this.y, 2);
+        if (this.partner && !this.partner.dead) {
+          ctx.strokeStyle = PAL[9];
+          ctx.beginPath();
+          ctx.moveTo(this.x + 10, this.y + 7);
+          ctx.lineTo(this.partner.x + 10, this.partner.y + 7);
+          ctx.stroke();
+        }
+      } else if (this.type === 'spider') {
+        ctx.strokeStyle = PAL[3];
+        ctx.beginPath();
+        ctx.moveTo(this.x + 10, this.baseY - 40);
+        ctx.lineTo(this.x + 10, this.y);
+        ctx.stroke();
+        drawSprite(ctx, 'spider', this.x, this.y, 2);
+      } else if (this.type === 'hazard') {
+        ctx.fillStyle = PAL[5];
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.fillStyle = PAL[7];
+        ctx.fillRect(this.x + 3, this.y + 3, this.w - 6, this.h - 6);
+        ctx.fillStyle = PAL[1];
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText('!', this.x + 7, this.y + 19);
+      }
+    }
+  }
+
+  // --- STAGE BOSS & FINAL BOSS CLASS ---
+  class Boss {
+    constructor(stage) {
+      this.stage = stage;
+      this.x = 250;
+      this.y = 350;
+      this.w = 76;
+      this.h = 90;
+      this.timer = 0;
+      this.shootTimer = 1.4;
+      this.flash = 0;
+      this.dead = false;
+
+      this.weakIdx = 0;
+      this.selectors = ['#id', '//xpath', '.css'];
+
+      this.isFinal = (stage === 6);
+      if (this.isFinal) {
+        this.name = 'FRIDAY DEPLOY';
+        this.maxHp = 45;
+        this.hp = 45;
+        this.phase = 1;
+        this.switches = [
+          { y: 345, approved: false },
+          { y: 395, approved: false },
+          { y: 445, approved: false }
+        ];
+      } else if (stage === 5) {
+        this.name = 'SELECTOR HYDRA';
+        this.maxHp = 18;
+        this.hp = 18;
+      } else {
+        const names = [
+          '',
+          'LINTER DAEMON',
+          'NODE_MODULES BLOB',
+          'HEISENBUG PHANTOM',
+          'DEADLOCK DEMON'
+        ];
+        this.name = names[stage];
+        this.maxHp = 8 + stage * 3;
+        this.hp = this.maxHp;
+      }
+    }
+
+    update(dt, projectiles, addEnemyBullet) {
+      this.timer += dt;
+      if (this.flash > 0) this.flash -= dt;
+
+      if (!this.isFinal) {
+        this.y = 355 + Math.sin(this.timer * 2.3) * 42;
+      } else {
+        this.y = 345 + Math.sin(this.timer * 1.8) * 28;
+        if (this.hp <= 30 && this.phase === 1) {
+          this.phase = 2;
+        }
+        if (this.phase === 2 && this.switches.every(s => s.approved)) {
+          this.phase = 3;
+        }
+      }
+
+      this.shootTimer -= dt;
+      if (this.shootTimer <= 0) {
+        if (this.isFinal) {
+          this.shootTimer = this.phase === 1 ? 0.95 : (this.phase === 2 ? 1.3 : 0.75);
+          const high = Math.random() > 0.5;
+          const by = high ? 436 : 458;
+          addEnemyBullet(this.x, by, -195, 0, 'HOTFIX');
+        } else {
+          this.shootTimer = Math.max(0.85, 1.6 - this.stage * 0.15);
+          const by = 434 + (Math.floor(this.timer * 10) % 2) * 24;
+          addEnemyBullet(this.x, by, -175, 0, 'ERR');
+        }
+      }
+    }
+
+    checkHit(proj, audio, game) {
+      if (proj.x + proj.w < this.x || proj.x > this.x + this.w ||
+          proj.y + proj.h < this.y || proj.y > this.y + this.h) {
+        return false;
+      }
+
+      if (this.stage === 3 && Math.sin(this.timer * 4.5) < -0.2) {
+        return false;
+      }
+
+      if (this.stage === 5) {
+        const headH = this.h / 3;
+        const hitZone = Math.floor((proj.y - this.y) / headH);
+        if (hitZone !== this.weakIdx) {
+          game.spawnPopup(this.x, proj.y, 'ElementNotInteractable!', PAL[5]);
+          return true;
+        }
+        this.hp--;
+        this.flash = 0.12;
+        this.weakIdx = (this.weakIdx + 1 + Math.floor(Math.random() * 2)) % 3;
+        audio.bossHit();
+        game.shake = 0.18;
+        return true;
+      }
+
+      if (this.isFinal) {
+        if (this.phase === 2) {
+          for (let i = 0; i < this.switches.length; i++) {
+            const sw = this.switches[i];
+            if (!sw.approved && Math.abs(proj.y - sw.y) < 22) {
+              sw.approved = true;
+              this.hp -= 4;
+              this.flash = 0.15;
+              audio.powerup();
+              game.spawnPopup(this.x - 20, sw.y, 'LGTM! Approved', PAL[8]);
+              game.shake = 0.2;
+              return true;
+            }
+          }
+          game.spawnPopup(this.x, proj.y, 'NEEDS 3 APPROVALS!', PAL[7]);
+          return true;
+        } else if (this.phase === 3) {
+          const coreY = this.y + this.h / 2;
+          if (Math.abs(proj.y - coreY) < 28) {
+            this.hp -= 1.5;
+            this.flash = 0.12;
+            audio.bossHit();
+            game.shake = 0.22;
+          } else {
+            game.spawnPopup(this.x, proj.y, 'HIT ROLLBACK CORE!', PAL[9]);
+          }
+          return true;
+        }
+      }
+
+      this.hp--;
+      this.flash = 0.12;
+      audio.bossHit();
+      game.shake = 0.16;
+      return true;
+    }
+
+    draw(ctx) {
+      const alpha = (this.stage === 3 && Math.sin(this.timer * 4.5) < -0.2) ? 0.25 : 1;
+      ctx.globalAlpha = alpha;
+
+      ctx.fillStyle = this.flash > 0 ? PAL[2] : (this.isFinal ? PAL[5] : PAL[11]);
+      ctx.fillRect(this.x, this.y, this.w, this.h);
+      ctx.strokeStyle = PAL[2];
+      ctx.lineWidth = 2;
+      ctx.strokeRect(this.x, this.y, this.w, this.h);
+
+      if (this.stage === 5) {
+        const headH = this.h / 3;
+        for (let i = 0; i < 3; i++) {
+          const hy = this.y + i * headH;
+          const isWeak = (i === this.weakIdx);
+          ctx.fillStyle = isWeak ? PAL[8] : PAL[4];
+          ctx.fillRect(this.x + 4, hy + 3, this.w - 8, headH - 6);
+          ctx.fillStyle = PAL[1];
+          ctx.font = 'bold 9px monospace';
+          ctx.fillText(this.selectors[i], this.x + 10, hy + 18);
+        }
+      } else if (this.isFinal) {
+        ctx.fillStyle = PAL[1];
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText('SHIP TO', this.x + 14, this.y + 22);
+        ctx.fillText('PROD NOW', this.x + 11, this.y + 34);
+
+        if (this.phase === 2) {
+          this.switches.forEach((sw, idx) => {
+            ctx.fillStyle = sw.approved ? PAL[8] : PAL[7];
+            ctx.fillRect(this.x - 16, sw.y - 10, 22, 20);
+            ctx.fillStyle = PAL[1];
+            ctx.font = 'bold 9px monospace';
+            ctx.fillText(sw.approved ? '✓' : 'PR' + (idx + 1), this.x - 14, sw.y + 4);
+          });
+        } else if (this.phase === 3) {
+          const cy = this.y + this.h / 2;
+          ctx.fillStyle = Math.floor(this.timer * 10) % 2 === 0 ? PAL[9] : PAL[2];
+          ctx.fillRect(this.x + 8, cy - 18, this.w - 16, 36);
+          ctx.fillStyle = PAL[1];
+          ctx.font = 'bold 9px monospace';
+          ctx.fillText('ROLLBACK', this.x + 12, cy + 3);
+        }
+      } else {
+        ctx.fillStyle = PAL[7];
+        ctx.fillRect(this.x + 12, this.y + 20, 14, 14);
+        ctx.fillRect(this.x + 44, this.y + 20, 14, 14);
+        ctx.fillStyle = PAL[1];
+        ctx.fillRect(this.x + 16, this.y + 56, 44, 12);
+      }
+
+      ctx.globalAlpha = 1;
+
+      ctx.fillStyle = PAL[1];
+      ctx.fillRect(60, 88, 240, 12);
+      ctx.strokeStyle = PAL[2];
+      ctx.strokeRect(60, 88, 240, 12);
+      const pct = Math.max(0, this.hp / this.maxHp);
+      ctx.fillStyle = this.isFinal ? PAL[5] : PAL[11];
+      ctx.fillRect(62, 90, 236 * pct, 8);
+
+      ctx.fillStyle = PAL[2];
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(this.name + (this.isFinal ? ` (PHASE ${this.phase}/3)` : ''), 180, 83);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  // --- LEVEL MANAGER ---
+  class Level {
+    constructor(stage) {
+      this.stage = stage;
+      this.groundY = 480;
+      this.duration = 60;
+      this.elapsed = 0;
+      this.baseSpeed = 128 + stage * 12;
+      this.spawnTimer = 1.2;
+      this.powerupTimer = 7.5;
+      this.platformTimer = 2.4;
+      this.pitTimer = 5.5;
+
+      this.enemies = [];
+      this.platforms = [];
+      this.pits = [];
+      this.powerups = [];
+      this.boss = null;
+      this.finalBossQueued = (stage === 5);
+
+      this.stageNames = [
+        '',
+        '1. COMMIT STAGE',
+        '2. BUILD STAGE',
+        '3. UNIT TEST STAGE',
+        '4. INTEGRATION STAGE',
+        '5. E2E STAGE'
+      ];
+    }
+
+    update(dt, game) {
+      const speed = this.baseSpeed * (game.player.coffeeTimer > 0 ? 1.38 : 1);
+
+      if (!this.boss) {
+        this.elapsed += dt;
+        if (this.elapsed >= this.duration) {
+          this.boss = new Boss(this.stage);
+          game.spawnPopup(110, 240, 'WARNING: BOSS DETECTED!', PAL[5]);
+        }
+      }
+
+      if (!this.boss && (this.stage === 2 || this.stage >= 4)) {
+        this.pitTimer -= dt;
+        if (this.pitTimer <= 0) {
+          this.pitTimer = 4.8 + Math.random() * 2.5;
+          this.pits.push({ x: 370, w: 68 });
+          this.platforms.push({ x: 365, y: 412, w: 80, vy: 0 });
+        }
+      }
+
+      for (let i = this.pits.length - 1; i >= 0; i--) {
+        this.pits[i].x -= speed * dt;
+        if (this.pits[i].x + this.pits[i].w < -20) this.pits.splice(i, 1);
+      }
+
+      this.platformTimer -= dt;
+      if (this.platformTimer <= 0 && !this.boss) {
+        this.platformTimer = 2.3 + Math.random() * 1.4;
+        const py = 370 + Math.floor(Math.random() * 3) * 28;
+        const moving = (this.stage === 4);
+        this.platforms.push({
+          x: 370,
+          y: py,
+          baseY: py,
+          w: 74,
+          moving,
+          phase: Math.random() * 6
+        });
+      }
+
+      for (let i = this.platforms.length - 1; i >= 0; i--) {
+        const p = this.platforms[i];
+        p.x -= speed * dt;
+        if (p.moving) {
+          p.phase += dt * 3;
+          p.y = p.baseY + Math.sin(p.phase) * 26;
+        }
+        if (p.x + p.w < -20) this.platforms.splice(i, 1);
+      }
+
+      this.spawnTimer -= dt;
+      if (this.spawnTimer <= 0 && !this.boss) {
+        this.spawnTimer = Math.max(0.95, 2.1 - this.stage * 0.16) + Math.random() * 0.6;
+        this.spawnStageEnemy(game);
+      }
+
+      this.powerupTimer -= dt;
+      if (this.powerupTimer <= 0) {
+        this.powerupTimer = 7.0 + Math.random() * 4.0;
+        const types = ['orb', 'orb', 'coffee', 'shield', 'triple', 'retry'];
+        let pType = types[Math.floor(Math.random() * types.length)];
+        if (Math.random() < 0.08) pType = 'machine';
+        this.powerups.push({
+          type: pType,
+          x: 370,
+          y: 350 + Math.random() * 95,
+          w: 18,
+          h: 18
+        });
+      }
+
+      for (let i = this.powerups.length - 1; i >= 0; i--) {
+        this.powerups[i].x -= speed * dt;
+        if (this.powerups[i].x < -30) this.powerups.splice(i, 1);
+      }
+
+      for (let i = this.enemies.length - 1; i >= 0; i--) {
+        const e = this.enemies[i];
+        e.update(dt, speed);
+        if (e.dead || e.x < -60) this.enemies.splice(i, 1);
+      }
+    }
+
+    spawnStageEnemy(game) {
+      const x = 375;
+      if (this.stage === 1) {
+        if (Math.random() < 0.55) {
+          this.enemies.push(new Enemy('bug', x, this.groundY - 18));
+        } else {
+          const high = Math.random() < 0.5;
+          this.enemies.push(new Enemy('nullPtr', x, high ? this.groundY - 38 : this.groundY - 20));
+        }
+      } else if (this.stage === 2) {
+        if (Math.random() < 0.5) {
+          this.enemies.push(new Enemy('conflict', x, this.groundY - 20));
+        } else {
+          this.enemies.push(new Enemy('slime', x, this.groundY));
+        }
+      } else if (this.stage === 3) {
+        this.enemies.push(new Enemy('ghost', x, this.groundY - 22 - Math.random() * 35));
+      } else if (this.stage === 4) {
+        if (Math.random() < 0.55) {
+          const r1 = new Enemy('race', x, this.groundY - 20);
+          const r2 = new Enemy('race', x + 48, this.groundY - 56);
+          r1.partner = r2;
+          r2.partner = r1;
+          this.enemies.push(r1, r2);
+        } else {
+          this.enemies.push(new Enemy('spider', x, this.groundY - 82));
+        }
+      } else if (this.stage === 5) {
+        const r = Math.random();
+        if (r < 0.35) {
+          this.enemies.push(new Enemy('hazard', x, this.groundY - 28));
+        } else if (r < 0.68) {
+          this.enemies.push(new Enemy('ghost', x, this.groundY - 30));
+        } else {
+          this.enemies.push(new Enemy('spider', x, this.groundY - 82));
+        }
+      }
+    }
+
+    isPlayerOverPit(player) {
+      const cx = player.x + player.w / 2;
+      return this.pits.some(pit => cx > pit.x + 6 && cx < pit.x + pit.w - 6);
+    }
+
+    draw(ctx, game) {
+      ctx.fillStyle = PAL[15];
+      ctx.fillRect(0, 0, 360, 640);
+
+      const offset = Math.floor(this.elapsed * 45) % 40;
+      ctx.strokeStyle = '#1f2438';
+      ctx.lineWidth = 1;
+      for (let x = -offset; x < 360; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 60);
+        ctx.lineTo(x, this.groundY);
+        ctx.stroke();
+      }
+      for (let y = 100; y < this.groundY; y += 45) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(360, y);
+        ctx.stroke();
+      }
+
+      if (this.stage === 1 && this.elapsed < 12) {
+        ctx.fillStyle = PAL[3];
+        ctx.font = '10px monospace';
+        ctx.fillText('< TAP/HOLD LEFT: JUMP', 14, 150);
+        ctx.fillText('SWIPE DOWN: SLIDE', 14, 165);
+        ctx.fillText('TAP RIGHT: assert() >', 215, 150);
+      }
+
+      ctx.fillStyle = PAL[4];
+      ctx.fillRect(0, this.groundY, 360, 100);
+      ctx.fillStyle = PAL[9];
+      ctx.fillRect(0, this.groundY, 360, 3);
+
+      for (const pit of this.pits) {
+        ctx.fillStyle = PAL[1];
+        ctx.fillRect(pit.x, this.groundY, pit.w, 100);
+        ctx.fillStyle = PAL[5];
+        ctx.fillRect(pit.x, this.groundY + 75, pit.w, 25);
+        ctx.fillStyle = PAL[7];
+        ctx.font = '8px monospace';
+        ctx.fillText('DEP HELL', pit.x + 12, this.groundY + 68);
+      }
+
+      for (const p of this.platforms) {
+        ctx.fillStyle = p.moving ? PAL[6] : PAL[10];
+        ctx.fillRect(p.x, p.y, p.w, 8);
+        ctx.fillStyle = PAL[2];
+        ctx.fillRect(p.x, p.y, p.w, 2);
+      }
+
+      for (const pu of this.powerups) {
+        drawSprite(ctx, pu.type, pu.x, pu.y, 2);
+      }
+
+      for (const e of this.enemies) {
+        e.draw(ctx);
+      }
+
+      if (this.boss) {
+        this.boss.draw(ctx);
+      }
+    }
+  }
+
+  // --- HUD & UI RENDERER ---
+  class HUD {
+    constructor() {
+      this.crtEnabled = true;
+      this.muteBtn = { x: 250, y: 8, w: 32, h: 22 };
+      this.crtBtn  = { x: 286, y: 8, w: 32, h: 22 };
+      this.pauseBtn= { x: 322, y: 8, w: 30, h: 22 };
+    }
+
+    draw(ctx, game) {
+      ctx.fillStyle = PAL[1];
+      ctx.fillRect(0, 0, 360, 56);
+      ctx.fillStyle = PAL[4];
+      ctx.fillRect(0, 54, 360, 2);
+
+      ctx.fillStyle = PAL[2];
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText('TESTS:', 10, 22);
+      for (let i = 0; i < Math.min(game.lives, 6); i++) {
+        ctx.fillStyle = PAL[8];
+        ctx.fillRect(56 + i * 18, 11, 14, 14);
+        ctx.fillStyle = PAL[1];
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText('✓', 59 + i * 18, 22);
+      }
+
+      ctx.fillStyle = game.coverage >= 80 ? PAL[8] : PAL[7];
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(`COV: ${Math.min(100, Math.floor(game.coverage))}%`, 10, 44);
+
+      ctx.fillStyle = PAL[9];
+      ctx.font = '10px monospace';
+      ctx.fillText(game.level.stageNames[game.stage], 115, 44);
+
+      this.drawMiniBtn(ctx, this.muteBtn, game.audio.muted ? 'MUTE' : 'SFX', !game.audio.muted);
+      this.drawMiniBtn(ctx, this.crtBtn, 'CRT', this.crtEnabled);
+      this.drawMiniBtn(ctx, this.pauseBtn, '||', game.state === 'PAUSED');
+
+      let px = 10;
+      const p = game.player;
+      if (p.coffeeTimer > 0) {
+        this.drawBadge(ctx, px, 62, `COFFEE ${p.coffeeTimer.toFixed(1)}s`, PAL[6]);
+        px += 92;
+      }
+      if (p.tripleTimer > 0) {
+        this.drawBadge(ctx, px, 62, `3xDATA ${p.tripleTimer.toFixed(1)}s`, PAL[7]);
+        px += 92;
+      }
+      if (p.machineTimer > 0) {
+        this.drawBadge(ctx, px, 62, `LOCALHOST ${p.machineTimer.toFixed(1)}s`, PAL[8]);
+      }
+
+      ctx.fillStyle = PAL[1];
+      ctx.fillRect(0, 580, 360, 60);
+      ctx.fillStyle = PAL[4];
+      ctx.fillRect(0, 580, 360, 2);
+
+      const stageLabels = ['COMMIT', 'BUILD', 'UNIT', 'INTEG', 'E2E'];
+      for (let i = 0; i < 5; i++) {
+        const stNum = i + 1;
+        const bx = 10 + i * 69;
+        const by = 592;
+        const bw = 64;
+        const bh = 26;
+
+        let col = PAL[4];
+        if (stNum < game.stage) col = PAL[8];
+        else if (stNum === game.stage) {
+          col = game.state === 'GAMEOVER' ? PAL[5] : PAL[7];
+        }
+
+        ctx.fillStyle = col;
+        ctx.fillRect(bx, by, bw, bh);
+
+        if (stNum === game.stage && game.state === 'PLAYING' && !game.level.boss) {
+          const pct = Math.min(1, game.level.elapsed / game.level.duration);
+          ctx.fillStyle = PAL[8];
+          ctx.fillRect(bx, by + bh - 5, bw * pct, 5);
+        }
+
+        ctx.strokeStyle = PAL[2];
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx, by, bw, bh);
+
+        ctx.fillStyle = PAL[1];
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(stageLabels[i], bx + bw / 2, by + 16);
+      }
+      ctx.textAlign = 'left';
+
+      ctx.fillStyle = PAL[3];
+      ctx.font = '9px monospace';
+      ctx.fillText('FRIDAY 4:55 PM — CI/CD PIPELINE MONITOR', 72, 632);
+    }
+
+    drawMiniBtn(ctx, rect, label, active) {
+      ctx.fillStyle = active ? PAL[4] : PAL[15];
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.strokeStyle = active ? PAL[9] : PAL[3];
+      ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.fillStyle = active ? PAL[2] : PAL[3];
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, rect.x + rect.w / 2, rect.y + 14);
+      ctx.textAlign = 'left';
+    }
+
+    drawBadge(ctx, x, y, text, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, 86, 14);
+      ctx.fillStyle = PAL[1];
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText(text, x + 4, y + 10);
+    }
+
+    drawCRT(ctx) {
+      if (!this.crtEnabled) return;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      for (let y = 0; y < 640; y += 4) {
+        ctx.fillRect(0, y, 360, 2);
+      }
+    }
+  }
+
+  // --- MAIN GAME CONTROLLER ---
+  class Game {
+    constructor(canvas) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d');
+      this.audio = new AudioEngine();
+      this.player = new Player();
+      this.hud = new HUD();
+
+      this.state = 'TITLE';
+      this.stage = 1;
+      this.lives = 3;
+      this.coverage = 0;
+      this.highScore = parseInt(localStorage.getItem('flaky_high_coverage') || '0', 10);
+
+      this.bugsSquashed = 0;
+      this.flakyFixed = 0;
+      this.shake = 0;
+      this.tipIndex = 0;
+      this.stackTrace = STACK_TRACES[0];
+
+      this.level = new Level(1);
+      this.projectiles = [];
+      this.enemyBullets = [];
+      this.popups = [];
+      this.activeTouches = new Map();
+
+      this.bindEvents();
+      this.lastTime = performance.now();
+      requestAnimationFrame(t => this.loop(t));
+    }
+
+    startNewGame() {
+      this.stage = 1;
+      this.lives = 3;
+      this.coverage = 0;
+      this.bugsSquashed = 0;
+      this.flakyFixed = 0;
+      this.startStage(1);
+    }
+
+    startStage(stageNum) {
+      this.stage = stageNum;
+      this.level = new Level(stageNum);
+      this.player.reset();
+      this.projectiles = [];
+      this.enemyBullets = [];
+      this.popups = [];
+      this.tipIndex = Math.floor(Math.random() * SDET_TIPS.length);
+      this.state = 'PLAYING';
+      this.spawnPopup(70, 260, this.level.stageNames[stageNum], PAL[9]);
+    }
+
+    fireAssert() {
+      if (this.player.shootCooldown > 0) return;
+      this.player.shootCooldown = 0.22;
+      this.audio.shoot();
+
+      const px = this.player.x + this.player.w;
+      const py = this.player.y + (this.player.isSliding ? 4 : 8);
+
+      if (this.player.tripleTimer > 0) {
+        this.projectiles.push({ x: px, y: py, vx: 330, vy: -55, w: 34, h: 10 });
+        this.projectiles.push({ x: px, y: py, vx: 340, vy: 0, w: 34, h: 10 });
+        this.projectiles.push({ x: px, y: py, vx: 330, vy: 55, w: 34, h: 10 });
+      } else {
+        this.projectiles.push({ x: px, y: py, vx: 340, vy: 0, w: 34, h: 10 });
+      }
+    }
+
+    spawnPopup(x, y, text, color = PAL[2]) {
+      this.popups.push({
+        x: Math.max(10, Math.min(240, x)),
+        y,
+        text,
+        color,
+        life: 1.15
+      });
+    }
+
+    damagePlayer(reason) {
+      if (this.player.invulnTimer > 0 || this.player.machineTimer > 0) return;
+
+      if (this.player.shield) {
+        this.player.shield = false;
+        this.player.invulnTimer = 1.0;
+        this.audio.hitEnemy();
+        this.spawnPopup(this.player.x, this.player.y - 10, 'MOCK SHIELD BLOCKED!', PAL[9]);
+        return;
+      }
+
+      this.lives--;
+      this.shake = 0.28;
+      this.audio.hurt();
+      this.player.invulnTimer = 1.6;
+      this.spawnPopup(this.player.x, this.player.y - 12, `AssertionError: ${reason}`, PAL[5]);
+
+      if (this.lives <= 0) {
+        this.stackTrace = STACK_TRACES[Math.floor(Math.random() * STACK_TRACES.length)];
+        this.saveHighScore();
+        this.state = 'GAMEOVER';
+      }
+    }
+
+    saveHighScore() {
+      const score = Math.min(100, Math.floor(this.coverage));
+      if (score > this.highScore) {
+        this.highScore = score;
+        localStorage.setItem('flaky_high_coverage', String(score));
+      }
+    }
+
+    update(dt) {
+      if (this.shake > 0) this.shake -= dt;
+
+      if (this.state !== 'PLAYING') return;
+
+      this.audio.updateBGM(dt, !!this.level.boss);
+      this.level.update(dt, this);
+
+      const overPit = this.level.isPlayerOverPit(this.player);
+      this.player.update(dt, overPit ? null : this.level.groundY, this.level.platforms);
+
+      if (this.player.y > 515) {
+        this.player.y = 360;
+        this.player.vy = -200;
+        this.damagePlayer('DependencyHellFall');
+      }
+
+      this.coverage = Math.min(100, this.coverage + dt * 0.22);
+
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        const pr = this.projectiles[i];
+        pr.x += pr.vx * dt;
+        pr.y += pr.vy * dt;
+        let removed = false;
+
+        if (this.level.boss && this.level.boss.checkHit(pr, this.audio, this)) {
+          this.projectiles.splice(i, 1);
+          removed = true;
+          if (this.level.boss.hp <= 0) {
+            this.onBossDefeated();
+          }
+        }
+
+        if (removed) continue;
+
+        for (let j = 0; j < this.level.enemies.length; j++) {
+          const e = this.level.enemies[j];
+          if (e.dead || !e.isSolid) continue;
+
+          if (pr.x < e.x + e.w && pr.x + pr.w > e.x &&
+              pr.y < e.y + e.h && pr.y + pr.h > e.y) {
+            this.projectiles.splice(i, 1);
+            removed = true;
+
+            if (e.type === 'hazard') {
+              this.spawnPopup(e.x, e.y, 'JUMP OR SLIDE!', PAL[7]);
+              break;
+            }
+
+            e.hp--;
+            this.audio.hitEnemy();
+            if (e.hp <= 0) {
+              if (e.type === 'race' && e.partner && !e.partner.linkedWaiting && !e.partner.dead) {
+                e.linkedWaiting = true;
+                e.respawnClock = 1.0;
+                this.spawnPopup(e.x - 10, e.y - 10, '1.0s! HIT THREAD 2!', PAL[9]);
+              } else {
+                e.dead = true;
+                if (e.partner) e.partner.dead = true;
+                this.bugsSquashed++;
+                if (e.type === 'ghost' || e.type === 'race') this.flakyFixed++;
+                this.coverage = Math.min(100, this.coverage + 1.4);
+                this.spawnPopup(e.x, e.y, e.label, PAL[8]);
+              }
+            }
+            break;
+          }
+        }
+
+        if (!removed && pr.x > 370) {
+          this.projectiles.splice(i, 1);
+        }
+      }
+
+      if (this.level.boss) {
+        this.level.boss.update(dt, this.projectiles, (bx, by, vx, vy, label) => {
+          this.enemyBullets.push({ x: bx, y: by, vx, vy, w: 28, h: 11, label });
+        });
+      }
+
+      for (let i = this.enemyBullets.length - 1; i >= 0; i--) {
+        const b = this.enemyBullets[i];
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        const p = this.player;
+        if (b.x < p.x + p.w - 3 && b.x + b.w > p.x + 3 &&
+            b.y < p.y + p.h - 3 && b.y + b.h > p.y + 3) {
+          this.enemyBullets.splice(i, 1);
+          this.damagePlayer(b.label);
+          continue;
+        }
+        if (b.x < -40) this.enemyBullets.splice(i, 1);
+      }
+
+      const p = this.player;
+      for (const e of this.level.enemies) {
+        if (e.dead || e.linkedWaiting) continue;
+        if (p.x < e.x + e.w - 4 && p.x + p.w > e.x + 4 &&
+            p.y < e.y + e.h - 4 && p.y + p.h > e.y + 4) {
+          if (p.machineTimer > 0) {
+            e.dead = true;
+            this.bugsSquashed++;
+            this.audio.hitEnemy();
+          } else {
+            this.damagePlayer(e.label);
+          }
+        }
+      }
+
+      for (let i = this.level.powerups.length - 1; i >= 0; i--) {
+        const pu = this.level.powerups[i];
+        if (p.x < pu.x + pu.w && p.x + p.w > pu.x &&
+            p.y < pu.y + pu.h && p.y + p.h > pu.y) {
+          this.level.powerups.splice(i, 1);
+          this.audio.powerup();
+          switch (pu.type) {
+            case 'coffee':
+              p.coffeeTimer = 5.0;
+              this.spawnPopup(p.x, p.y - 12, 'COFFEE: 5s SPEED BOOST!', PAL[6]);
+              break;
+            case 'shield':
+              p.shield = true;
+              this.spawnPopup(p.x, p.y - 12, 'MOCK SHIELD ACTIVE!', PAL[9]);
+              break;
+            case 'retry':
+              this.lives = Math.min(6, this.lives + 1);
+              this.spawnPopup(p.x, p.y - 12, 'RETRY x3: Retry passed! (+1✓)', PAL[8]);
+              break;
+            case 'triple':
+              p.tripleTimer = 7.0;
+              this.spawnPopup(p.x, p.y - 12, 'TEST DATA: TRIPLE SHOT!', PAL[7]);
+              break;
+            case 'orb':
+              this.coverage = Math.min(100, this.coverage + 6);
+              this.spawnPopup(p.x, p.y - 12, '+6% CODE COVERAGE!', PAL[8]);
+              break;
+            case 'machine':
+              p.machineTimer = 6.0;
+              this.spawnPopup(p.x, p.y - 16, 'WORKS ON MY MACHINE! (INVINCIBLE)', PAL[7]);
+              break;
+          }
+        }
+      }
+
+      for (let i = this.popups.length - 1; i >= 0; i--) {
+        this.popups[i].y -= 22 * dt;
+        this.popups[i].life -= dt;
+        if (this.popups[i].life <= 0) this.popups.splice(i, 1);
+      }
+    }
+
+    onBossDefeated() {
+      this.audio.stageClear();
+      this.coverage = Math.min(100, this.coverage + 8);
+      this.saveHighScore();
+
+      if (this.stage === 5 && this.level.finalBossQueued) {
+        this.level.finalBossQueued = false;
+        this.level.boss = new Boss(6);
+        this.spawnPopup(55, 220, 'FINAL BOSS: FRIDAY DEPLOY!', PAL[5]);
+        return;
+      }
+
+      if (this.stage >= 5) {
+        this.coverage = 100;
+        this.saveHighScore();
+        this.state = 'VICTORY';
+      } else {
+        this.tipIndex = Math.floor(Math.random() * SDET_TIPS.length);
+        this.state = 'STAGE_CLEAR';
+      }
+    }
+
+    draw() {
+      const ctx = this.ctx;
+      ctx.save();
+
+      if (this.shake > 0) {
+        const dx = (Math.random() - 0.5) * 8;
+        const dy = (Math.random() - 0.5) * 8;
+        ctx.translate(dx, dy);
+      }
+
+      if (this.state === 'TITLE') {
+        this.drawTitleScreen(ctx);
+      } else if (this.state === 'HOWTO') {
+        this.drawHowToScreen(ctx);
+      } else {
+        this.level.draw(ctx, this);
+        this.player.draw(ctx);
+
+        for (const pr of this.projectiles) {
+          ctx.fillStyle = PAL[9];
+          ctx.fillRect(pr.x, pr.y, pr.w, pr.h);
+          ctx.fillStyle = PAL[1];
+          ctx.font = 'bold 8px monospace';
+          ctx.fillText('assert', pr.x + 2, pr.y + 8);
+        }
+
+        for (const b of this.enemyBullets) {
+          ctx.fillStyle = PAL[5];
+          ctx.fillRect(b.x, b.y, b.w, b.h);
+          ctx.fillStyle = PAL[2];
+          ctx.font = 'bold 8px monospace';
+          ctx.fillText(b.label, b.x + 2, b.y + 8);
+        }
+
+        for (const pop of this.popups) {
+          ctx.fillStyle = PAL[1];
+          ctx.fillText(pop.text, pop.x + 1, pop.y + 1);
+          ctx.fillStyle = pop.color;
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText(pop.text, pop.x, pop.y);
+        }
+
+        this.hud.draw(ctx, this);
+
+        if (this.state === 'PAUSED') this.drawPauseOverlay(ctx);
+        else if (this.state === 'STAGE_CLEAR') this.drawStageClearOverlay(ctx);
+        else if (this.state === 'GAMEOVER') this.drawGameOverOverlay(ctx);
+        else if (this.state === 'VICTORY') this.drawVictoryOverlay(ctx);
+      }
+
+      this.hud.drawCRT(ctx);
+      ctx.restore();
+    }
+
+    drawTitleScreen(ctx) {
+      ctx.fillStyle = PAL[15];
+      ctx.fillRect(0, 0, 360, 640);
+
+      ctx.fillStyle = PAL[4];
+      ctx.fillRect(20, 48, 320, 110);
+      ctx.strokeStyle = PAL[9];
+      ctx.lineWidth = 3;
+      ctx.strokeRect(20, 48, 320, 110);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = PAL[7];
+      ctx.font = 'bold 34px monospace';
+      ctx.fillText('FLAKY', 180, 96);
+      ctx.fillStyle = PAL[9];
+      ctx.font = 'bold 15px monospace';
+      ctx.fillText('ESCAPE THE PIPELINE', 180, 124);
+      ctx.fillStyle = PAL[5];
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText('FRIDAY 4:55 PM EDITION', 180, 144);
+
+      ctx.fillStyle = PAL[2];
+      ctx.font = '11px monospace';
+      ctx.fillText('Rogue AI "The Heisenbug" corrupted CI!', 180, 195);
+      ctx.fillText('Help Senior SDET Tess squash bugs and', 180, 212);
+      ctx.fillText('stop the untested Friday Deploy!', 180, 229);
+
+      drawSprite(ctx, 'tessRun1', 110, 255, 4);
+      drawSprite(ctx, 'ghost', 205, 265, 3);
+
+      this.drawMenuButton(ctx, 60, 345, 240, 48, 'START PIPELINE RUN', PAL[8]);
+      this.drawMenuButton(ctx, 60, 410, 240, 44, 'HOW TO PLAY', PAL[10]);
+      this.drawMenuButton(ctx, 60, 470, 240, 38, `CRT SCANLINES: ${this.hud.crtEnabled ? 'ON' : 'OFF'}`, PAL[4]);
+
+      ctx.fillStyle = PAL[7];
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(`BEST COVERAGE: ${this.highScore}%`, 180, 545);
+
+      ctx.fillStyle = PAL[3];
+      ctx.font = '10px monospace';
+      ctx.fillText(SDET_TIPS[0], 180, 595);
+      ctx.textAlign = 'left';
+    }
+
+    drawHowToScreen(ctx) {
+      ctx.fillStyle = PAL[15];
+      ctx.fillRect(0, 0, 360, 640);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = PAL[9];
+      ctx.font = 'bold 20px monospace';
+      ctx.fillText('SDET FIELD MANUAL', 180, 50);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = PAL[2];
+      ctx.font = '11px monospace';
+      const lines = [
+        'CONTROLS (TOUCH ONLY):',
+        '• TAP LEFT HALF: Jump (Hold = Higher)',
+        '• SWIPE DOWN: Slide under high hazards',
+        '• TAP RIGHT HALF: Fire assert() shot',
+        '',
+        'PIPELINE ENEMIES:',
+        '• Memory Leaks: Grow larger over time!',
+        '• Flaky Ghosts: Only hittable when solid!',
+        '• Race Conditions: Hit BOTH within 1.0s!',
+        '• Selector Hydra: Shoot green weak spot!',
+        '',
+        'POWER-UPS:',
+        '• Coffee: Speed  • Mock Shield: 1 Block',
+        '• Retry x3: +1✓  • Test Data: 3x Shot'
+      ];
+      lines.forEach((l, i) => {
+        ctx.fillStyle = l.endsWith(':') ? PAL[7] : PAL[2];
+        ctx.fillText(l, 24, 92 + i * 26);
+      });
+
+      ctx.textAlign = 'center';
+      this.drawMenuButton(ctx, 60, 520, 240, 48, 'BACK TO TITLE', PAL[8]);
+      ctx.textAlign = 'left';
+    }
+
+    drawPauseOverlay(ctx) {
+      ctx.fillStyle = 'rgba(13, 14, 21, 0.88)';
+      ctx.fillRect(20, 140, 320, 320);
+      ctx.strokeStyle = PAL[9];
+      ctx.strokeRect(20, 140, 320, 320);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = PAL[7];
+      ctx.font = 'bold 22px monospace';
+      ctx.fillText('PIPELINE PAUSED', 180, 185);
+
+      this.drawWrappedText(ctx, SDET_TIPS[this.tipIndex], 180, 235, 280, 16, PAL[2]);
+
+      this.drawMenuButton(ctx, 60, 315, 240, 44, 'RESUME RUN', PAL[8]);
+      this.drawMenuButton(ctx, 60, 375, 240, 44, 'QUIT TO TITLE', PAL[5]);
+      ctx.textAlign = 'left';
+    }
+
+    drawStageClearOverlay(ctx) {
+      ctx.fillStyle = 'rgba(13, 14, 21, 0.92)';
+      ctx.fillRect(18, 120, 324, 380);
+      ctx.strokeStyle = PAL[8];
+      ctx.lineWidth = 3;
+      ctx.strokeRect(18, 120, 324, 380);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = PAL[8];
+      ctx.font = 'bold 24px monospace';
+      ctx.fillText('✓ BUILD PASSED', 180, 165);
+
+      ctx.fillStyle = PAL[2];
+      ctx.font = '13px monospace';
+      ctx.fillText(`${this.level.stageNames[this.stage]} COMPLETE`, 180, 198);
+
+      ctx.fillStyle = PAL[9];
+      ctx.fillText(`Bugs Squashed:     ${this.bugsSquashed}`, 180, 245);
+      ctx.fillText(`Flaky Tests Fixed: ${this.flakyFixed}`, 180, 272);
+      ctx.fillText(`Code Coverage:     ${Math.floor(this.coverage)}%`, 180, 299);
+
+      this.drawWrappedText(ctx, SDET_TIPS[this.tipIndex], 180, 345, 280, 15, PAL[7]);
+
+      this.drawMenuButton(ctx, 55, 420, 250, 48, 'DEPLOY NEXT STAGE >', PAL[8]);
+      ctx.textAlign = 'left';
+    }
+
+    drawGameOverOverlay(ctx) {
+      ctx.fillStyle = 'rgba(13, 14, 21, 0.94)';
+      ctx.fillRect(14, 105, 332, 420);
+      ctx.strokeStyle = PAL[5];
+      ctx.lineWidth = 3;
+      ctx.strokeRect(14, 105, 332, 420);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = PAL[5];
+      ctx.font = 'bold 26px monospace';
+      ctx.fillText('✗ TEST FAILED', 180, 148);
+
+      ctx.fillStyle = PAL[1];
+      ctx.fillRect(26, 168, 308, 130);
+      ctx.strokeStyle = PAL[4];
+      ctx.strokeRect(26, 168, 308, 130);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = PAL[12];
+      ctx.font = '10px monospace';
+      const lines = this.stackTrace.split('\n');
+      lines.forEach((line, idx) => {
+        ctx.fillText(line.slice(0, 42), 34, 192 + idx * 20);
+      });
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = PAL[7];
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText(`COVERAGE REACHED: ${Math.floor(this.coverage)}%`, 180, 332);
+
+      this.drawMenuButton(ctx, 55, 365, 250, 48, 'RETRY STAGE? (re-run)', PAL[8]);
+      this.drawMenuButton(ctx, 55, 430, 250, 44, 'MAIN MENU', PAL[4]);
+      ctx.textAlign = 'left';
+    }
+
+    drawVictoryOverlay(ctx) {
+      ctx.fillStyle = 'rgba(13, 14, 21, 0.95)';
+      ctx.fillRect(14, 95, 332, 440);
+      ctx.strokeStyle = PAL[8];
+      ctx.lineWidth = 3;
+      ctx.strokeRect(14, 95, 332, 440);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = PAL[8];
+      ctx.font = 'bold 22px monospace';
+      ctx.fillText('FRIDAY DEPLOY BLOCKED!', 180, 140);
+
+      ctx.fillStyle = PAL[7];
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText('ALL 5 PIPELINE STAGES GREEN!', 180, 170);
+
+      drawSprite(ctx, 'tessRun1', 156, 190, 4);
+
+      ctx.fillStyle = PAL[2];
+      ctx.font = '12px monospace';
+      ctx.fillText(`Final Code Coverage: 100%`, 180, 275);
+      ctx.fillText(`Total Bugs Squashed: ${this.bugsSquashed}`, 180, 300);
+      ctx.fillText(`Flaky Ghosts Fixed:  ${this.flakyFixed}`, 180, 325);
+
+      ctx.fillStyle = PAL[9];
+      ctx.font = '11px monospace';
+      ctx.fillText('4:59 PM: Tess closes her laptop.', 180, 365);
+      ctx.fillText('The weekend is officially saved!', 180, 383);
+
+      this.drawMenuButton(ctx, 55, 435, 250, 50, 'PLAY AGAIN', PAL[8]);
+      ctx.textAlign = 'left';
+    }
+
+    drawMenuButton(ctx, x, y, w, h, label, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = PAL[2];
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+      ctx.fillStyle = PAL[1];
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText(label, x + w / 2, y + h / 2 + 5);
+    }
+
+    drawWrappedText(ctx, text, cx, y, maxWidth, lineHeight, color) {
+      ctx.fillStyle = color;
+      ctx.font = '11px monospace';
+      const words = text.split(' ');
+      let line = '';
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        if (testLine.length * 6.8 > maxWidth && n > 0) {
+          ctx.fillText(line.trim(), cx, y);
+          line = words[n] + ' ';
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line.trim(), cx, y);
+    }
+
+    toLogicalCoords(clientX, clientY) {
+      const rect = this.canvas.getBoundingClientRect();
+      return {
+        x: ((clientX - rect.left) / rect.width) * 360,
+        y: ((clientY - rect.top) / rect.height) * 640
+      };
+    }
+
+    inRect(pt, rx, ry, rw, rh) {
+      return pt.x >= rx && pt.x <= rx + rw && pt.y >= ry && pt.y <= ry + rh;
+    }
+
+    handlePointerDown(id, clientX, clientY) {
+      this.audio.unlock();
+      const pt = this.toLogicalCoords(clientX, clientY);
+      this.activeTouches.set(id, { startX: pt.x, startY: pt.y, swiped: false });
+
+      if (this.state === 'PLAYING' || this.state === 'PAUSED') {
+        if (this.inRect(pt, this.hud.muteBtn.x, this.hud.muteBtn.y, this.hud.muteBtn.w, this.hud.muteBtn.h)) {
+          this.audio.muted = !this.audio.muted;
+          return;
+        }
+        if (this.inRect(pt, this.hud.crtBtn.x, this.hud.crtBtn.y, this.hud.crtBtn.w, this.hud.crtBtn.h)) {
+          this.hud.crtEnabled = !this.hud.crtEnabled;
+          return;
+        }
+        if (this.inRect(pt, this.hud.pauseBtn.x, this.hud.pauseBtn.y, this.hud.pauseBtn.w, this.hud.pauseBtn.h)) {
+          this.state = (this.state === 'PLAYING') ? 'PAUSED' : 'PLAYING';
+          return;
+        }
+      }
+
+      if (this.state === 'TITLE') {
+        if (this.inRect(pt, 60, 345, 240, 48)) this.startNewGame();
+        else if (this.inRect(pt, 60, 410, 240, 44)) this.state = 'HOWTO';
+        else if (this.inRect(pt, 60, 470, 240, 38)) this.hud.crtEnabled = !this.hud.crtEnabled;
+        return;
+      }
+
+      if (this.state === 'HOWTO') {
+        if (this.inRect(pt, 60, 520, 240, 48)) this.state = 'TITLE';
+        return;
+      }
+
+      if (this.state === 'PAUSED') {
+        if (this.inRect(pt, 60, 315, 240, 44)) this.state = 'PLAYING';
+        else if (this.inRect(pt, 60, 375, 240, 44)) this.state = 'TITLE';
+        return;
+      }
+
+      if (this.state === 'STAGE_CLEAR') {
+        if (this.inRect(pt, 55, 420, 250, 48)) this.startStage(this.stage + 1);
+        return;
+      }
+
+      if (this.state === 'GAMEOVER') {
+        if (this.inRect(pt, 55, 365, 250, 48)) {
+          this.lives = 3;
+          this.startStage(this.stage);
+        } else if (this.inRect(pt, 55, 430, 250, 44)) {
+          this.state = 'TITLE';
+        }
+        return;
+      }
+
+      if (this.state === 'VICTORY') {
+        if (this.inRect(pt, 55, 435, 250, 50)) this.state = 'TITLE';
+        return;
+      }
+
+      if (this.state === 'PLAYING' && pt.y > 58) {
+        if (pt.x < 180) {
+          this.player.startJump(this.audio);
+        } else {
+          this.fireAssert();
+        }
+      }
+    }
+
+    handlePointerMove(id, clientX, clientY) {
+      const rec = this.activeTouches.get(id);
+      if (!rec || rec.swiped || this.state !== 'PLAYING') return;
+      const pt = this.toLogicalCoords(clientX, clientY);
+      if (pt.y - rec.startY > 32) {
+        rec.swiped = true;
+        this.player.releaseJump();
+        this.player.startSlide(this.audio);
+      }
+    }
+
+    handlePointerUp(id) {
+      this.activeTouches.delete(id);
+      this.player.releaseJump();
+    }
+
+    bindEvents() {
+      this.canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          this.handlePointerDown(t.identifier, t.clientX, t.clientY);
+        }
+      }, { passive: false });
+
+      this.canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          this.handlePointerMove(t.identifier, t.clientX, t.clientY);
+        }
+      }, { passive: false });
+
+      const endTouch = e => {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          this.handlePointerUp(e.changedTouches[i].identifier);
+        }
+      };
+      this.canvas.addEventListener('touchend', endTouch, { passive: false });
+      this.canvas.addEventListener('touchcancel', endTouch, { passive: false });
+
+      let mouseDown = false;
+      this.canvas.addEventListener('mousedown', e => {
+        mouseDown = true;
+        this.handlePointerDown('mouse', e.clientX, e.clientY);
+      });
+      window.addEventListener('mousemove', e => {
+        if (mouseDown) this.handlePointerMove('mouse', e.clientX, e.clientY);
+      });
+      window.addEventListener('mouseup', () => {
+        if (mouseDown) {
+          mouseDown = false;
+          this.handlePointerUp('mouse');
+        }
+      });
+    }
+
+    loop(now) {
+      const dt = Math.min(0.05, Math.max(0.001, (now - this.lastTime) / 1000));
+      this.lastTime = now;
+      this.update(dt);
+      this.draw();
+      requestAnimationFrame(t => this.loop(t));
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    initSprites();
+    new Game(document.getElementById('gameCanvas'));
+  });
+})();
+</script>
+</body>
+</html>
