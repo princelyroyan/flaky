@@ -24,9 +24,11 @@ Just before the weekend, the CI/CD pipeline is corrupted by a rogue AI called **
 
 Designed for portrait mode (`360x640` logical resolution) on mobile browsers:
 
-* **Tap / Hold Left Half of Screen:** Jump (Hold for a higher jump)
-* **Tap Right Half of Screen:** Fire an `assert()` projectile
+* **Tap / Hold Anywhere on Screen:** Jump (Hold for a higher jump)
+* **FIRE Button (bottom right):** Fire an `assert()` projectile. Hold it down to auto-fire
 * **Swipe Down:** Slide under high hazards and bullets
+
+The FIRE button is multi-touch friendly: keep one thumb on it while jumping and sliding with the other.
 
 ---
 

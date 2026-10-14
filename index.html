@@ -1059,9 +1059,9 @@
       if (this.stage === 1 && this.elapsed < 12) {
         ctx.fillStyle = PAL[3];
         ctx.font = '10px monospace';
-        ctx.fillText('< TAP/HOLD LEFT: JUMP', 14, 150);
+        ctx.fillText('TAP SCREEN: JUMP (HOLD = HIGHER)', 14, 150);
         ctx.fillText('SWIPE DOWN: SLIDE', 14, 165);
-        ctx.fillText('TAP RIGHT: assert() >', 215, 150);
+        ctx.fillText('HOLD FIRE BUTTON: assert() shots', 14, 180);
       }
 
       ctx.fillStyle = PAL[4];
@@ -1107,6 +1107,50 @@
       this.muteBtn = { x: 250, y: 8, w: 32, h: 22 };
       this.crtBtn  = { x: 286, y: 8, w: 32, h: 22 };
       this.pauseBtn= { x: 322, y: 8, w: 30, h: 22 };
+      this.fireBtn = { x: 308, y: 532, r: 31 }; // sits in the ground band, clear of the pipeline bar
+    }
+
+    inFireButton(pt) {
+      const dx = pt.x - this.fireBtn.x;
+      const dy = pt.y - this.fireBtn.y;
+      const r = this.fireBtn.r + 8; // generous hit area for thumbs
+      return dx * dx + dy * dy <= r * r;
+    }
+
+    drawFireButton(ctx, game) {
+      const b = this.fireBtn;
+      const pressed = game.fireHeld > 0;
+      const ready = game.player.shootCooldown <= 0;
+
+      ctx.save();
+      ctx.globalAlpha = pressed ? 0.95 : 0.72; // translucent so approaching pits stay visible
+
+      // Outer ring
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fillStyle = pressed ? PAL[6] : PAL[4];
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = pressed ? PAL[7] : PAL[9];
+      ctx.stroke();
+
+      // Inner pad
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r - 8, 0, Math.PI * 2);
+      ctx.fillStyle = pressed ? PAL[5] : (ready ? PAL[1] : PAL[15]);
+      ctx.fill();
+
+      // Label
+      ctx.textAlign = 'center';
+      ctx.fillStyle = pressed ? PAL[2] : PAL[9];
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText('FIRE', b.x, b.y + 1);
+      ctx.font = '9px monospace';
+      ctx.fillStyle = pressed ? PAL[7] : PAL[3];
+      ctx.fillText('assert()', b.x, b.y + 14);
+      ctx.textAlign = 'left';
+
+      ctx.restore();
     }
 
     draw(ctx, game) {
@@ -1251,6 +1295,7 @@
       this.enemyBullets = [];
       this.popups = [];
       this.activeTouches = new Map();
+      this.fireHeld = 0; // number of pointers currently holding the FIRE button
 
       this.bindEvents();
       this.bindResize();
@@ -1300,6 +1345,8 @@
       this.projectiles = [];
       this.enemyBullets = [];
       this.popups = [];
+      this.fireHeld = 0;
+      this.activeTouches.clear();
       this.tipIndex = Math.floor(Math.random() * SDET_TIPS.length);
       this.state = 'PLAYING';
       this.spawnPopup(70, 260, this.level.stageNames[stageNum], PAL[9]);
@@ -1374,6 +1421,8 @@
 
       const overPit = this.level.isPlayerOverPit(this.player);
       this.player.update(dt, overPit ? null : this.level.groundY, this.level.platforms);
+
+      if (this.fireHeld > 0) this.fireAssert(); // hold FIRE to auto-fire (rate-limited by cooldown)
 
       if (this.player.y > 515) {
         this.player.y = 360;
@@ -1579,6 +1628,7 @@
           ctx.fillText(pop.text, pop.x, pop.y);
         }
 
+        if (this.state === 'PLAYING' || this.state === 'PAUSED') this.hud.drawFireButton(ctx, this);
         this.hud.draw(ctx, this);
 
         if (this.state === 'PAUSED') this.drawPauseOverlay(ctx);
@@ -1648,10 +1698,11 @@
       ctx.fillStyle = PAL[2];
       ctx.font = '11px monospace';
       const lines = [
-        'CONTROLS (TOUCH ONLY):',
-        '• TAP LEFT HALF: Jump (Hold = Higher)',
+        'CONTROLS (TOUCH / MOUSE):',
+        '• TAP ANYWHERE: Jump (Hold = Higher)',
         '• SWIPE DOWN: Slide under high hazards',
-        '• TAP RIGHT HALF: Fire assert() shot',
+        '• FIRE BUTTON (bottom right): assert()',
+        '  Hold it down to auto-fire!',
         '',
         'PIPELINE ENEMIES:',
         '• Memory Leaks: Grow larger over time!',
@@ -1886,17 +1937,19 @@
       }
 
       if (this.state === 'PLAYING' && pt.y > 58) {
-        if (pt.x < 180) {
-          this.player.startJump(this.audio);
-        } else {
+        if (this.hud.inFireButton(pt)) {
+          this.activeTouches.get(id).fire = true;
+          this.fireHeld++;
           this.fireAssert();
+        } else {
+          this.player.startJump(this.audio);
         }
       }
     }
 
     handlePointerMove(id, clientX, clientY) {
       const rec = this.activeTouches.get(id);
-      if (!rec || rec.swiped || this.state !== 'PLAYING') return;
+      if (!rec || rec.fire || rec.swiped || this.state !== 'PLAYING') return;
       const pt = this.toLogicalCoords(clientX, clientY);
       if (pt.y - rec.startY > 32) {
         rec.swiped = true;
@@ -1906,8 +1959,13 @@
     }
 
     handlePointerUp(id) {
+      const rec = this.activeTouches.get(id);
       this.activeTouches.delete(id);
-      this.player.releaseJump();
+      if (rec && rec.fire) {
+        this.fireHeld = Math.max(0, this.fireHeld - 1);
+      } else {
+        this.player.releaseJump();
+      }
     }
 
     bindEvents() {
