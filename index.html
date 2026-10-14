@@ -346,15 +346,54 @@
       this.muted = false;
       this.bgmTimer = 0;
       this.noteIdx = 0;
-      this.melody = [
-        261.63, 329.63, 392.00, 523.25, 392.00, 329.63,
-        293.66, 349.23, 440.00, 587.33, 440.00, 349.23,
-        246.94, 329.63, 392.00, 493.88, 392.00, 329.63,
-        261.63, 392.00, 523.25, 392.00, 329.63, 261.63
+      // Background music: Beethoven's "Für Elise" (WoO 59, public domain), opening
+      // section as a single-voice chiptune. Where the right hand rests, the left-hand
+      // bass notes fill in. Each token is NOTE[:length] with length in sixteenth
+      // notes (default 1); "R" is a rest.
+      const FUR_ELISE_A = [
+        'E5', 'D#5',                                  // pickup
+        'E5', 'D#5', 'E5', 'B4', 'D5', 'C5',
+        'A4', 'E3', 'A3', 'C4', 'E4', 'A4',
+        'B4', 'E3', 'G#3', 'E4', 'G#4', 'B4',
+        'C5', 'E3', 'A3', 'E4', 'E5', 'D#5',
+        'E5', 'D#5', 'E5', 'B4', 'D5', 'C5',
+        'A4', 'E3', 'A3', 'C4', 'E4', 'A4',
+        'B4', 'E3', 'G#3', 'E4', 'C5', 'B4',
+        'A4', 'E3', 'A3'
       ];
-      this.bossMelody = [
-        146.83, 155.56, 146.83, 130.81, 146.83, 174.61, 164.81, 130.81
+      const FUR_ELISE_B = [
+        'B4', 'C5', 'D5',                             // second ending
+        'E5', 'G3', 'C4', 'G4', 'F5', 'E5',
+        'D5', 'G3', 'B3', 'F4', 'E5', 'D5',
+        'C5', 'E3', 'A3', 'E4', 'D5', 'C5',
+        'B4', 'E3', 'E4', 'R', 'E4', 'E5',
+        'E4', 'E5', 'E5', 'D#5', 'E5', 'D#5'
       ];
+      // A section (repeated), then B section, then loops back to the pickup trill.
+      this.melody = AudioEngine.parseMelody([...FUR_ELISE_A, ...FUR_ELISE_A, ...FUR_ELISE_B]);
+      // Boss fight: the same theme an octave down, faster, on a sawtooth voice.
+      this.bossMelody = AudioEngine.parseMelody(FUR_ELISE_A);
+
+      // Previous original chiptune loop, kept for reference:
+      // this.melody = AudioEngine.parseMelody([
+      //   'C4','E4','G4','C5','G4','E4', 'D4','F4','A4','D5','A4','F4',
+      //   'B3','E4','G4','B4','G4','E4', 'C4','G4','C5','G4','E4','C4']);
+      // this.bossMelody = AudioEngine.parseMelody(['D3','D#3','D3','C3','D3','F3','E3','C3']);
+    }
+
+    static noteFreq(name) {
+      const m = /^([A-G])(#?)(\d)$/.exec(name);
+      if (!m) return 0;
+      const base = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 }[m[1]];
+      const semis = base + (m[2] ? 1 : 0) + (parseInt(m[3], 10) - 4) * 12;
+      return 440 * Math.pow(2, semis / 12);
+    }
+
+    static parseMelody(tokens) {
+      return tokens.map(tok => {
+        const [note, len] = tok.split(':');
+        return { f: note === 'R' ? 0 : AudioEngine.noteFreq(note), d: len ? parseFloat(len) : 1 };
+      });
     }
 
     unlock() {
@@ -407,12 +446,16 @@
       this.bgmTimer -= dt;
       if (this.bgmTimer <= 0) {
         const seq = isBoss ? this.bossMelody : this.melody;
-        const speed = isBoss ? 0.14 : 0.18;
-        this.bgmTimer = speed;
-        const freq = seq[this.noteIdx % seq.length];
-        this.tone(freq, speed * 0.85, 'triangle', 0.04);
-        if (this.noteIdx % 2 === 0) {
-          this.tone(freq * 0.5, speed * 0.7, 'square', 0.025);
+        const unit = isBoss ? 0.11 : 0.16;           // seconds per sixteenth note
+        const note = seq[this.noteIdx % seq.length];
+        const dur = unit * note.d;
+        this.bgmTimer = dur;
+        if (note.f > 0) {
+          const freq = isBoss ? note.f * 0.5 : note.f;
+          this.tone(freq, dur * 0.85, isBoss ? 'sawtooth' : 'triangle', isBoss ? 0.035 : 0.04);
+          if (this.noteIdx % 2 === 0) {
+            this.tone(freq * 0.5, dur * 0.7, 'square', 0.025);
+          }
         }
         this.noteIdx++;
       }

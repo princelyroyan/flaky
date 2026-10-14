@@ -74,7 +74,7 @@ Beat the final boss and the victory screen offers **SHARE MY BADGE**: a 1080×10
 ## 🛠️ Technical Highlights
 
 * **Zero External Assets:** Every sprite, icon, and background is rendered procedurally in JavaScript using a strict 16-color NES-inspired hex palette (`PAL`) and cached to offscreen `<canvas>` elements for 60 FPS performance.
-* **Web Audio API Chiptune Synthesizer:** Background music loops and retro sound effects (`square`, `triangle`, and `sawtooth` waves) are synthesized in real time with zero `.mp3` or `.wav` files.
+* **Web Audio API Chiptune Synthesizer:** The background music is a single-voice 8-bit cover of Beethoven's *Für Elise* (public domain), written as note names in the code and played on a `triangle` wave; the boss fight plays it an octave down on a `sawtooth`. All sound effects are synthesized in real time with zero `.mp3` or `.wav` files.
 * **Installable PWA in One File:** Uses inline SVG Data URIs for app icons, an inline `data:application/manifest+json` Web App Manifest, and a Blob-registered Service Worker so it can be installed full-screen on **iOS** and **Android**.
 
 ---
