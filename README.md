@@ -60,6 +60,17 @@ The FIRE button is multi-touch friendly: keep one thumb on it while jumping and 
 
 ---
 
+## 🏅 Shareable Badge
+
+Beat the final boss and the victory screen offers **SHARE MY BADGE**: a 1080×1080 pixel-art certificate ("Certified Friday Deploy Blocker") with your name, stats, rank and all five pipeline stages green. Lose a run and the game-over screen offers a **FAIL CARD** instead ("Pipeline failed at stage N. Rerun on Monday.").
+
+* **Ranks:** finish with all 3 tests intact for `PRINCIPAL WEEKEND GUARDIAN`, 2 for `SENIOR SDET`, otherwise `JUNIOR SDET`.
+* **On phones** the share button opens the native share sheet with the image attached, so LinkedIn, WhatsApp, Instagram and friends are one tap away.
+* **On desktop** it downloads the PNG and copies a ready-made caption (with the game link and hashtags) to your clipboard to paste into a LinkedIn post.
+* Your name is remembered on the device so you only type it once. Everything is generated in the browser, nothing is uploaded anywhere.
+
+---
+
 ## 🛠️ Technical Highlights
 
 * **Zero External Assets:** Every sprite, icon, and background is rendered procedurally in JavaScript using a strict 16-color NES-inspired hex palette (`PAL`) and cached to offscreen `<canvas>` elements for 60 FPS performance.
