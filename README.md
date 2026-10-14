@@ -40,7 +40,7 @@ The FIRE button is multi-touch friendly: keep one thumb on it while jumping and 
 | **2. Build Stage** | Dependency Hell Pits | **Version Conflicts** (`<<`), **Memory Leak Slimes** (grow over time) | `NODE_MODULES BLOB` |
 | **3. Unit Test Stage** | Fast & Tight Rooms | **Flaky Test Ghosts** (only hittable when 100% solid) | `HEISENBUG PHANTOM` |
 | **4. Integration Stage** | Moving Platforms | **Race Conditions** (must hit both within 1.0s!), **504 Timeout Spiders** | `DEADLOCK DEMON` |
-| **5. E2E Stage** | Long Endurance Run | **StaleElement Hazards**, Spiders, Ghosts | `SELECTOR HYDRA` & **`FRIDAY DEPLOY`** |
+| **5. E2E Stage** | Long Endurance Run | **The Product Manager** (can't be shot, jump over!), **The Customer** (can't be shot, slide under!), Spiders, Ghosts | `SELECTOR HYDRA` & **`FRIDAY DEPLOY`** |
 
 ### 🚨 Final Boss: FRIDAY DEPLOY (3 Phases)
 1. **Phase 1:** Dodge high and low `HOTFIX` bullet-hell barrages while chipping away its health.

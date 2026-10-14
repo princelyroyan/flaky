@@ -266,6 +266,36 @@
       "08888880",
       "00888800"
     ],
+    pm: [
+      "0000EEEE000E",
+      "000EDDDDE00E",
+      "000D1DD1D00E",
+      "000DDDDDD00E",
+      "0000DDDD000E",
+      "0044252440DE",
+      "044425244400",
+      "044445444400",
+      "0D4444444000",
+      "000444444000",
+      "000444444000",
+      "000440044000",
+      "000440044000",
+      "000110011000"
+    ],
+    customer: [
+      "000BBBBBB000",
+      "00BBBBBBBB00",
+      "00BBDDDDBB00",
+      "00D1DDDD1D00",
+      "00DD1DD1DD00",
+      "00DDDDDDDD00",
+      "00DCDDDDCD00",
+      "00DD1111DD00",
+      "000DDDDDD000",
+      "0000DDDD0000",
+      "002266662200",
+      "022666666220"
+    ],
     machine: [
       "07777770",
       "79999997",
@@ -575,9 +605,17 @@
           this.label = '504 Timeout';
           this.w = 20; this.h = 14;
           break;
-        case 'hazard':
-          this.label = 'StaleElement!';
-          this.w = 22; this.h = 28;
+        case 'pm':
+          // Product Manager: stands on the ground, can't be shot, must be JUMPED over.
+          this.label = 'ScopeCreep!';
+          this.w = 24; this.h = 28;
+          this.hp = 999;
+          break;
+        case 'customer':
+          // Customer hanging from an URGENT ticket tape: can't be shot, must be SLID under.
+          // Hitbox reaches high so jumps fail, and its bottom edge clears a sliding Tess.
+          this.label = 'P0 Escalation!';
+          this.w = 20; this.h = 100;
           this.hp = 999;
           break;
       }
@@ -660,14 +698,42 @@
         ctx.lineTo(this.x + 10, this.y);
         ctx.stroke();
         drawSprite(ctx, 'spider', this.x, this.y, 2);
-      } else if (this.type === 'hazard') {
-        ctx.fillStyle = PAL[5];
-        ctx.fillRect(this.x, this.y, this.w, this.h);
+      } else if (this.type === 'pm') {
+        drawSprite(ctx, 'pm', this.x, this.y, 2);
+        // Protest sign on the pole
         ctx.fillStyle = PAL[7];
-        ctx.fillRect(this.x + 3, this.y + 3, this.w - 6, this.h - 6);
+        ctx.fillRect(this.x + 6, this.y - 22, 46, 20);
+        ctx.strokeStyle = PAL[1];
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.x + 6.5, this.y - 21.5, 45, 19);
         ctx.fillStyle = PAL[1];
-        ctx.font = 'bold 12px monospace';
-        ctx.fillText('!', this.x + 7, this.y + 19);
+        ctx.font = 'bold 7px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('1 MORE', this.x + 29, this.y - 13);
+        ctx.fillText('FEATURE?', this.x + 29, this.y - 5);
+        ctx.textAlign = 'left';
+      } else if (this.type === 'customer') {
+        const bottom = this.y + this.h;
+        const cardY = bottom - 36;
+        // Hazard-striped ticket tape dropping from above
+        for (let ty = 58; ty < cardY; ty += 6) {
+          ctx.fillStyle = (Math.floor(ty / 6) % 2 === 0) ? PAL[5] : PAL[7];
+          ctx.fillRect(this.x + 2, ty, 16, Math.min(6, cardY - ty));
+        }
+        // Support ticket card with the Customer's face
+        ctx.fillStyle = PAL[2];
+        ctx.fillRect(this.x - 6, cardY, 32, 36);
+        ctx.fillStyle = PAL[5];
+        ctx.fillRect(this.x - 6, cardY, 32, 9);
+        ctx.fillStyle = PAL[2];
+        ctx.font = 'bold 7px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('URGENT!', this.x + 10, cardY + 7);
+        ctx.textAlign = 'left';
+        drawSprite(ctx, 'customer', this.x - 2, cardY + 10, 2);
+        ctx.strokeStyle = PAL[5];
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.x - 5.5, cardY + 0.5, 31, 35);
       }
     }
   }
@@ -1021,8 +1087,10 @@
         }
       } else if (this.stage === 5) {
         const r = Math.random();
-        if (r < 0.35) {
-          this.enemies.push(new Enemy('hazard', x, this.groundY - 28));
+        if (r < 0.18) {
+          this.enemies.push(new Enemy('pm', x, this.groundY - 28));
+        } else if (r < 0.36) {
+          this.enemies.push(new Enemy('customer', x, this.groundY - 114));
         } else if (r < 0.68) {
           this.enemies.push(new Enemy('ghost', x, this.groundY - 30));
         } else {
@@ -1457,8 +1525,12 @@
             this.projectiles.splice(i, 1);
             removed = true;
 
-            if (e.type === 'hazard') {
-              this.spawnPopup(e.x, e.y, 'JUMP OR SLIDE!', PAL[7]);
+            if (e.type === 'pm') {
+              this.spawnPopup(e.x - 40, e.y - 34, "Can't assert() the PM! JUMP!", PAL[7]);
+              break;
+            }
+            if (e.type === 'customer') {
+              this.spawnPopup(e.x - 40, e.y + e.h - 50, 'Customer is always right! SLIDE!', PAL[7]);
               break;
             }
 
@@ -1709,6 +1781,8 @@
         '• Flaky Ghosts: Only hittable when solid!',
         '• Race Conditions: Hit BOTH within 1.0s!',
         '• Selector Hydra: Shoot green weak spot!',
+        '• Product Mgr: Unshootable. JUMP over!',
+        '• Customer: Unshootable. SLIDE under!',
         '',
         'POWER-UPS:',
         '• Coffee: Speed  • Mock Shield: 1 Block',
@@ -1716,7 +1790,7 @@
       ];
       lines.forEach((l, i) => {
         ctx.fillStyle = l.endsWith(':') ? PAL[7] : PAL[2];
-        ctx.fillText(l, 24, 92 + i * 26);
+        ctx.fillText(l, 24, 90 + i * 24);
       });
 
       ctx.textAlign = 'center';
