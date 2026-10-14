@@ -1253,8 +1253,35 @@
       this.activeTouches = new Map();
 
       this.bindEvents();
+      this.bindResize();
       this.lastTime = performance.now();
       requestAnimationFrame(t => this.loop(t));
+    }
+
+    // Match the canvas backing store to the real device pixels so the 360x640
+    // logical scene is rendered sharp instead of being upscaled by the browser.
+    resize() {
+      const rect = this.canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(1, Math.round(rect.width * dpr));
+      const h = Math.max(1, Math.round(rect.height * dpr));
+      if (this.canvas.width !== w || this.canvas.height !== h) {
+        this.canvas.width = w;
+        this.canvas.height = h;
+      }
+      // Resizing resets context state, so re-apply the transform and smoothing.
+      this.ctx.setTransform(w / 360, 0, 0, h / 640, 0, 0);
+      this.ctx.imageSmoothingEnabled = false;
+    }
+
+    bindResize() {
+      this.resize();
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => this.resize()).observe(this.canvas);
+      } else {
+        window.addEventListener('resize', () => this.resize());
+        window.addEventListener('orientationchange', () => this.resize());
+      }
     }
 
     startNewGame() {
@@ -1515,8 +1542,8 @@
       ctx.save();
 
       if (this.shake > 0) {
-        const dx = (Math.random() - 0.5) * 8;
-        const dy = (Math.random() - 0.5) * 8;
+        const dx = Math.round((Math.random() - 0.5) * 8);
+        const dy = Math.round((Math.random() - 0.5) * 8);
         ctx.translate(dx, dy);
       }
 
