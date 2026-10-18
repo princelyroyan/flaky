@@ -71,6 +71,7 @@
 /**
  * FLAKY: Escape the Pipeline
  * Self-contained 8-bit HTML5 Canvas Game
+ * Created by Princely Royan Philip
  */
 (() => {
   'use strict';
@@ -125,6 +126,32 @@
     "TimeoutError: Waiting 30000ms for selector '#will-to-live'\n  at E2ERunner.flake(CypressHill.js:99)",
     "OutOfMemoryError: node_modules exceeded mass of observable universe\n  at npm.install(BlackHole.js:1)",
     "RaceConditionException: Thread B finished before Thread A started\n  at Async.await(Quantum.js:0)"
+  ];
+
+  const GAME_CREATOR = 'Princely Royan Philip';
+
+  // --- OPENING STORY (typewriter intro shown when the game loads) ---
+  const INTRO_PAGES = [
+    {
+      heading: 'FRIDAY THE 13TH  //  4:55 PM',
+      text: 'The office has emptied out. One last commit lands on main with the weekend five minutes away. Deep inside the CI server a cooling fan stops spinning, and the build light turns a color nobody has ever seen before.',
+      sprite: 'bug', scale: 3, color: 5
+    },
+    {
+      heading: 'THE PIPELINE TURNS',
+      text: 'Tests that passed all week start failing. Then passing. Then failing again. The build log fills with a single word, typed by nothing anyone ever hired: HEISENBUG.',
+      sprite: 'ghost', scale: 3, color: 11
+    },
+    {
+      heading: 'ROGUE AI DETECTED',
+      text: 'The Heisenbug has swallowed every stage: Commit, Build, Unit, Integration, E2E. At the very end of the run a giant red FRIDAY DEPLOY button is counting down to production.',
+      sprite: 'nullPtr', scale: 3, color: 6
+    },
+    {
+      heading: 'ONE DESK STILL LIT',
+      text: 'Tess, Senior SDET, sets down the coffee, cracks both knuckles and loads a fresh assert(). Nobody ships untested code past Tess. Not today. Not on a Friday.',
+      sprite: 'tessRun1', scale: 4, color: 9
+    }
   ];
 
   // --- PIXEL SPRITE BITMAPS (Hex indices 0-F map to PAL 0-15) ---
@@ -1391,7 +1418,8 @@
       this.player = new Player();
       this.hud = new HUD();
 
-      this.state = 'TITLE';
+      this.state = 'INTRO';
+      this.intro = null;
       this.stage = 1;
       this.lives = 3;
       this.coverage = 0;
@@ -1414,10 +1442,246 @@
       try { savedName = localStorage.getItem('flaky_player_name') || ''; } catch (e) {}
       this.playerName = savedName;
 
+      this.startIntro();
       this.bindEvents();
       this.bindResize();
       this.lastTime = performance.now();
       requestAnimationFrame(t => this.loop(t));
+    }
+
+    // --- OPENING STORY ---
+    startIntro() {
+      const rain = [];
+      for (let i = 0; i < 48; i++) {
+        rain.push({ x: Math.random() * 360, y: Math.random() * 640, len: 4 + Math.random() * 8, v: 90 + Math.random() * 160 });
+      }
+      this.intro = {
+        page: 0,          // index into INTRO_PAGES; === INTRO_PAGES.length means the credits page
+        chars: 0,         // characters revealed so far on the current page (typewriter)
+        lines: this.wrapText(INTRO_PAGES[0].text, 40),
+        blipChars: 0,
+        time: 0,
+        pageTime: 0,
+        flash: 0,
+        nextFlash: 1.5 + Math.random() * 3,
+        rain
+      };
+      this.state = 'INTRO';
+    }
+
+    wrapText(text, maxChars) {
+      const lines = [];
+      let line = '';
+      for (const word of text.split(' ')) {
+        const test = line ? line + ' ' + word : word;
+        if (test.length > maxChars && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
+    }
+
+    introPageLength() {
+      return this.intro.lines.reduce((n, l) => n + l.length, 0);
+    }
+
+    introAdvance() {
+      const it = this.intro;
+      if (it.page >= INTRO_PAGES.length) {
+        this.state = 'TITLE';
+        return;
+      }
+      if (it.chars < this.introPageLength()) {
+        it.chars = this.introPageLength(); // finish the current page instantly
+        return;
+      }
+      it.page++;
+      it.chars = 0;
+      it.blipChars = 0;
+      it.pageTime = 0;
+      it.lines = it.page < INTRO_PAGES.length ? this.wrapText(INTRO_PAGES[it.page].text, 40) : [];
+      this.audio.tone(520, 0.06, 'square', 0.05, 780);
+    }
+
+    updateIntro(dt) {
+      const it = this.intro;
+      it.time += dt;
+      it.pageTime += dt;
+
+      for (const d of it.rain) {
+        d.y += d.v * dt;
+        if (d.y > 640) { d.y = -d.len; d.x = Math.random() * 360; }
+      }
+
+      it.flash = Math.max(0, it.flash - dt * 1.6);
+      it.nextFlash -= dt;
+      if (it.nextFlash <= 0) {
+        it.flash = 0.35;
+        it.nextFlash = 2.5 + Math.random() * 4;
+      }
+
+      if (it.page < INTRO_PAGES.length) {
+        const total = this.introPageLength();
+        if (it.chars < total && it.pageTime > 0.35) {
+          it.chars = Math.min(total, it.chars + dt * 34);
+          if (Math.floor(it.chars) - it.blipChars >= 3) {
+            it.blipChars = Math.floor(it.chars);
+            this.audio.tone(1100 + Math.random() * 300, 0.025, 'square', 0.018);
+          }
+        }
+      }
+    }
+
+    drawIntroScreen(ctx) {
+      const it = this.intro;
+      ctx.fillStyle = PAL[15];
+      ctx.fillRect(0, 0, 360, 640);
+
+      // Glitch rain in the background
+      ctx.fillStyle = PAL[4];
+      for (const d of it.rain) ctx.fillRect(Math.round(d.x), Math.round(d.y), 1, d.len);
+
+      // Crescent moon in the top-left corner
+      ctx.fillStyle = PAL[3];
+      ctx.beginPath(); ctx.arc(46, 48, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = PAL[15];
+      ctx.beginPath(); ctx.arc(55, 42, 13, 0, Math.PI * 2); ctx.fill();
+
+      ctx.textAlign = 'center';
+
+      if (it.page >= INTRO_PAGES.length) {
+        this.drawIntroCredits(ctx);
+      } else {
+        const pg = INTRO_PAGES[it.page];
+
+        ctx.fillStyle = PAL[pg.color];
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText(pg.heading, 180, 112);
+        ctx.fillRect(60, 122, 240, 2);
+
+        // Scene sprite
+        const img = SPRITE_CACHE[pg.sprite];
+        const sw = (img ? img.width : 12) * pg.scale;
+        drawSprite(ctx, pg.sprite, Math.round(180 - sw / 2), 150, pg.scale);
+
+        // Terminal window
+        ctx.fillStyle = PAL[1];
+        ctx.fillRect(20, 232, 320, 240);
+        ctx.strokeStyle = PAL[4];
+        ctx.lineWidth = 2;
+        ctx.strokeRect(20, 232, 320, 240);
+        ctx.fillStyle = PAL[4];
+        ctx.fillRect(20, 232, 320, 16);
+        ctx.fillStyle = PAL[5]; ctx.fillRect(27, 236, 8, 8);
+        ctx.fillStyle = PAL[7]; ctx.fillRect(39, 236, 8, 8);
+        ctx.fillStyle = PAL[8]; ctx.fillRect(51, 236, 8, 8);
+        ctx.fillStyle = PAL[2];
+        ctx.font = 'bold 9px monospace';
+        ctx.fillText('ci-runner-13 :: build.log', 180, 244);
+
+        // Typewriter story text
+        ctx.textAlign = 'left';
+        ctx.font = '11px monospace';
+        let remaining = Math.floor(it.chars);
+        const total = this.introPageLength();
+        let y = 272;
+        for (let i = 0; i < it.lines.length; i++) {
+          const line = it.lines[i];
+          if (remaining <= 0) break;
+          const shown = line.slice(0, remaining);
+          ctx.fillStyle = PAL[2];
+          ctx.fillText(shown, 32, y);
+          remaining -= line.length;
+          if (remaining <= 0 && it.chars < total) {
+            // blinking cursor at the typing position
+            if (Math.floor(it.time * 6) % 2 === 0) {
+              ctx.fillStyle = PAL[8];
+              ctx.fillRect(32 + shown.length * 6.6, y - 9, 6, 11);
+            }
+          }
+          y += 18;
+        }
+        if (it.chars >= total && Math.floor(it.time * 2) % 2 === 0) {
+          ctx.fillStyle = PAL[8];
+          ctx.fillText('> _', 32, 456);
+        }
+
+        // Page dots
+        ctx.textAlign = 'center';
+        for (let i = 0; i <= INTRO_PAGES.length; i++) {
+          ctx.fillStyle = i === it.page ? PAL[7] : PAL[4];
+          ctx.fillRect(180 - (INTRO_PAGES.length + 1) * 7 + i * 14, 492, 8, 8);
+        }
+
+        ctx.fillStyle = PAL[3];
+        ctx.font = '10px monospace';
+        if (Math.floor(it.time * 1.5) % 2 === 0) {
+          ctx.fillText(it.chars < total ? 'TAP TO FAST-FORWARD' : 'TAP TO CONTINUE', 180, 530);
+        }
+      }
+
+      // Skip button (top right) on every intro page
+      this.drawMenuButton(ctx, 268, 14, 78, 26, 'SKIP >>', PAL[4]);
+
+      ctx.fillStyle = PAL[3];
+      ctx.font = '10px monospace';
+      ctx.fillText(`Created by ${GAME_CREATOR}`, 180, 612);
+
+      // Lightning flash
+      if (it.flash > 0) {
+        ctx.fillStyle = `rgba(252, 252, 252, ${(it.flash * 0.25).toFixed(3)})`;
+        ctx.fillRect(0, 0, 360, 640);
+      }
+      ctx.textAlign = 'left';
+    }
+
+    drawIntroCredits(ctx) {
+      const it = this.intro;
+      const a = Math.min(1, it.pageTime / 0.9);
+      ctx.save();
+      ctx.globalAlpha = a;
+
+      ctx.fillStyle = PAL[4];
+      ctx.fillRect(20, 150, 320, 300);
+      ctx.strokeStyle = PAL[9];
+      ctx.lineWidth = 3;
+      ctx.strokeRect(20, 150, 320, 300);
+
+      ctx.fillStyle = PAL[7];
+      ctx.font = 'bold 30px monospace';
+      ctx.fillText('FLAKY', 180, 205);
+      ctx.fillStyle = PAL[9];
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText('ESCAPE THE PIPELINE', 180, 230);
+
+      drawSprite(ctx, 'tessRun1', 120, 252, 3);
+      drawSprite(ctx, 'ghost', 200, 258, 2);
+
+      ctx.fillStyle = PAL[3];
+      ctx.font = '11px monospace';
+      ctx.fillText('A GAME BY', 180, 330);
+      ctx.fillStyle = PAL[2];
+      ctx.font = 'bold 17px monospace';
+      ctx.fillText(GAME_CREATOR.toUpperCase(), 180, 356);
+      ctx.fillStyle = PAL[9];
+      ctx.fillRect(70, 368, 220, 2);
+
+      ctx.fillStyle = PAL[3];
+      ctx.font = '10px monospace';
+      ctx.fillText('Starring Tess, Senior SDET', 180, 395);
+      ctx.fillText('and The Heisenbug as itself', 180, 411);
+
+      ctx.restore();
+
+      if (a >= 1 && Math.floor(it.time * 1.5) % 2 === 0) {
+        ctx.fillStyle = PAL[8];
+        ctx.font = 'bold 13px monospace';
+        ctx.fillText('TAP TO START', 180, 530);
+      }
     }
 
     // Match the canvas backing store to the real device pixels so the 360x640
@@ -1531,6 +1795,7 @@
     update(dt) {
       if (this.shake > 0) this.shake -= dt;
 
+      if (this.state === 'INTRO') this.updateIntro(dt);
       if (this.state !== 'PLAYING') return;
 
       this.audio.updateBGM(dt, !!this.level.boss);
@@ -1717,7 +1982,9 @@
         ctx.translate(dx, dy);
       }
 
-      if (this.state === 'TITLE') {
+      if (this.state === 'INTRO') {
+        this.drawIntroScreen(ctx);
+      } else if (this.state === 'TITLE') {
         this.drawTitleScreen(ctx);
       } else if (this.state === 'HOWTO') {
         this.drawHowToScreen(ctx);
@@ -1796,14 +2063,16 @@
       this.drawMenuButton(ctx, 60, 345, 240, 48, 'START PIPELINE RUN', PAL[8]);
       this.drawMenuButton(ctx, 60, 410, 240, 44, 'HOW TO PLAY', PAL[10]);
       this.drawMenuButton(ctx, 60, 470, 240, 38, `CRT SCANLINES: ${this.hud.crtEnabled ? 'ON' : 'OFF'}`, PAL[4]);
+      this.drawMenuButton(ctx, 60, 518, 240, 28, 'REPLAY STORY INTRO', PAL[4]);
 
       ctx.fillStyle = PAL[7];
       ctx.font = 'bold 14px monospace';
-      ctx.fillText(`BEST COVERAGE: ${this.highScore}%`, 180, 545);
+      ctx.fillText(`BEST COVERAGE: ${this.highScore}%`, 180, 568);
 
       ctx.fillStyle = PAL[3];
       ctx.font = '10px monospace';
-      ctx.fillText(SDET_TIPS[0], 180, 595);
+      ctx.fillText(`Created by ${GAME_CREATOR}`, 180, 588);
+      ctx.fillText(SDET_TIPS[0], 180, 612);
       ctx.textAlign = 'left';
     }
 
@@ -2257,10 +2526,17 @@
         }
       }
 
+      if (this.state === 'INTRO') {
+        if (this.inRect(pt, 268, 14, 78, 26)) this.state = 'TITLE';
+        else this.introAdvance();
+        return;
+      }
+
       if (this.state === 'TITLE') {
         if (this.inRect(pt, 60, 345, 240, 48)) this.startNewGame();
         else if (this.inRect(pt, 60, 410, 240, 44)) this.state = 'HOWTO';
         else if (this.inRect(pt, 60, 470, 240, 38)) this.hud.crtEnabled = !this.hud.crtEnabled;
+        else if (this.inRect(pt, 60, 518, 240, 28)) this.startIntro();
         return;
       }
 

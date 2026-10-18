@@ -14,7 +14,9 @@
 
 ## 📖 The Plot
 
-It’s **4:55 PM on a Friday**. You are **Tess**, a Senior SDET at a tiny startup. 
+It’s **4:55 PM on Friday the 13th**. You are **Tess**, a Senior SDET at a tiny startup. 
+
+The game opens with a short typewriter-style story intro that sets the scene: the office empties out, one last commit lands, and the pipeline starts glitching as the Heisenbug wakes up. Tap to fast-forward a page, tap again to continue, or hit **SKIP** to jump straight to the title screen. You can watch it again any time with **REPLAY STORY INTRO** on the title screen.
 
 Just before the weekend, the CI/CD pipeline is corrupted by a rogue AI called **"The Heisenbug,"** causing tests to pass and fail at random. Tess must fight through all 5 stages of the pipeline, squash bugs, stabilize flaky tests, and destroy the giant red **"Friday Deploy"** button before untested code ships to production and takes the whole company down.
 
@@ -95,3 +97,9 @@ No `npm install`, no build step, and no `node_modules` black hole required:
 git clone [https://github.com/princelyroyan/flaky.git](https://github.com/princelyroyan/flaky.git)
 cd flaky
 # Open index.html in any browser!
+
+---
+
+## 👤 Creator
+
+Created by **Princely Royan Philip**.
